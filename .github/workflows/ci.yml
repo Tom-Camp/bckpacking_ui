@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # Same checks the Husky/lint-staged hooks run locally, which can be skipped.
+      - run: npm run lint
+      - run: npm run check
+      - run: npx vitest --run
+      - run: npm run build
+
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: bp
+          POSTGRES_PASSWORD: bp
+          POSTGRES_DB: bp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bp -d bp"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # app.utils.config.Settings in the API requires these at import time
+      JWT_SECRET: ci-only-not-a-secret
+      POSTGRES_USER: bp
+      POSTGRES_PASSWORD: bp
+      POSTGRES_DB: bp
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: '5432'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The e2e test drives the real API through the preview server's /api proxy.
+      - name: Check out API
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Tom-Camp/bckpacking_api
+          ref: main
+          path: api
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: '3.14'
+          working-directory: api
+          enable-cache: true
+      - name: Start API
+        working-directory: api
+        run: |
+          uv sync --locked --no-dev
+          uv run --no-dev alembic upgrade head
+          nohup uv run --no-dev uvicorn app.main:app --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &
+          for _ in $(seq 30); do
+            curl -sf http://localhost:8000/openapi.json > /dev/null && exit 0
+            sleep 1
+          done
+          echo "API did not start"; cat "$RUNNER_TEMP/api.log"; exit 1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # Call Playwright directly: `npm run test:e2e` reinstalls every browser on each run.
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-failure
+          path: |
+            test-results/
+            ${{ runner.temp }}/api.log
+          retention-days: 7
+          if-no-files-found: ignore
