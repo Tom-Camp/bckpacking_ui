@@ -1,4 +1,4 @@
-import type { GearItem, Trip, TripGear } from '$lib/api/types';
+import type { GearItem, Trip, TripFood, TripGear, TripNote, User } from '$lib/api/types';
 
 const ts = '2026-01-01T00:00:00Z';
 
@@ -71,6 +71,51 @@ export function trip(overrides: Partial<Trip> = {}): Trip {
 		created_at: ts,
 		updated_at: ts,
 		checklist_ready: false,
+		...overrides
+	};
+}
+
+export function user(overrides: Partial<User> = {}): User {
+	return {
+		id: 'user-1',
+		email: 'hiker@example.com',
+		username: 'hiker',
+		first_name: null,
+		last_name: null,
+		picture: null,
+		body_weight_g: null,
+		measurements: 'imperial',
+		status: 'active',
+		role: 'user',
+		created_at: ts,
+		updated_at: ts,
+		...overrides
+	};
+}
+
+export function note(overrides: Partial<TripNote> = {}): TripNote {
+	return {
+		id: crypto.randomUUID(),
+		content: 'Shuttle: 555-0100',
+		trip_id: 'trip-1',
+		created_at: ts,
+		updated_at: ts,
+		...overrides
+	};
+}
+
+export function food(overrides: Partial<TripFood> = {}): TripFood {
+	return {
+		id: crypto.randomUUID(),
+		day: 1,
+		name: 'Oatmeal',
+		meal_type: 'breakfast',
+		servings: 1,
+		weight_g: 100,
+		kcal: 400,
+		planner_id: 'plan-1',
+		created_at: ts,
+		updated_at: ts,
 		...overrides
 	};
 }
