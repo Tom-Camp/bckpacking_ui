@@ -32,6 +32,8 @@ jobs:
       # Same checks the Husky/lint-staged hooks run locally, which can be skipped.
       - run: npm run lint
       - run: npm run check
+      # Component tests run in Vitest browser mode on Chromium.
+      - run: npx playwright install --with-deps chromium
       - run: npx vitest --run
       - run: npm run build
 

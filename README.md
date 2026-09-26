@@ -37,7 +37,7 @@ Then use DevTools → Network → Offline, and reload.
 | ------------------- | ------------------------------------------------------------------ |
 | `npm run check`     | svelte-check / TypeScript                                          |
 | `npm run lint`      | Prettier + ESLint                                                  |
-| `npm run test:unit` | Vitest: units, weights, food, outbox and sync engine               |
+| `npm run test:unit` | Vitest: logic in Node, plus components and pages in Chromium       |
 | `npm run test:e2e`  | Playwright against the production build; **needs the API running** |
 | `npm run gen:api`   | Regenerate API types after backend schema changes                  |
 | `npm run gen:icons` | Regenerate PWA icons from `static/logo.svg`                        |

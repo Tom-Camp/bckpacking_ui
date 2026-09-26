@@ -1,0 +1,123 @@
+import { describe, expect, it } from 'vitest';
+import type { Trip } from '$lib/api/types';
+import { db } from '$lib/data/db';
+import { mockApi, respond } from '$lib/test/api';
+import { gearItem, trip, tripGear } from '$lib/test/fixtures';
+import { renderApp } from '$lib/test/render';
+import GearList from './GearList.svelte';
+
+const tent = gearItem({ name: 'Tent', category: 'shelter', weight_g: 1000 });
+const stakes = gearItem({ name: 'Stakes', category: 'shelter', weight_g: 10 });
+const jacket = gearItem({ name: 'Jacket', category: 'clothing', weight_g: 300, kind: 'worn' });
+const stove = gearItem({ name: 'Stove', category: 'kitchen', weight_g: 85 });
+
+const tentLine = tripGear(tent, { packed: true });
+const stakesLine = tripGear(stakes, { quantity: 6 });
+const jacketLine = tripGear(jacket);
+
+async function setup(t: Trip = trip({ gear_list: [tentLine, stakesLine, jacketLine] })) {
+	await db.gearItems.bulkPut([tent, stakes, jacket, stove]);
+	await db.trips.put(t);
+	return renderApp(GearList, { trip: t }, { units: 'metric' });
+}
+
+describe('GearList', () => {
+	it('groups gear by category with weights and packing progress', async () => {
+		const screen = await setup();
+
+		await expect.element(screen.getByText('1 of 3 packed')).toBeVisible();
+		const headings = screen.getByRole('heading', { level: 3 }).elements();
+		expect(headings.map((h) => h.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+			'clothing 0 g',
+			'shelter 1.06 kg'
+		]);
+		await expect.element(screen.getByText('worn, not in pack weight')).toBeVisible();
+		await expect.element(screen.getByTestId('gear-Stakes')).toHaveTextContent(/6.*60 g/);
+	});
+
+	it('points to the closet when the list is empty', async () => {
+		const screen = await setup(trip());
+		await expect.element(screen.getByText(/No gear yet/)).toBeVisible();
+		await expect.element(screen.getByRole('button', { name: 'Copy from trip' })).toBeDisabled();
+	});
+
+	it('marks gear packed offline', async () => {
+		const screen = await setup();
+		await screen.getByRole('checkbox', { name: 'Packed Stakes' }).click();
+
+		await expect
+			.poll(
+				async () =>
+					(await db.trips.get('trip-1'))?.gear_list.find((l) => l.id === stakesLine.id)?.packed
+			)
+			.toBe(true);
+		expect((await db.outbox.toArray())[0]).toMatchObject({
+			path: `/api/v1/trips/trip-1/gear/${stakesLine.id}`,
+			body: { packed: true }
+		});
+	});
+
+	it('changes quantity but not below one', async () => {
+		const screen = await setup();
+		const tentRow = screen.getByTestId('gear-Tent');
+		await expect.element(tentRow.getByRole('button', { name: 'Fewer' })).toBeDisabled();
+
+		await screen.getByTestId('gear-Stakes').getByRole('button', { name: 'Fewer' }).click();
+		await expect
+			.poll(
+				async () =>
+					(await db.trips.get('trip-1'))?.gear_list.find((l) => l.id === stakesLine.id)?.quantity
+			)
+			.toBe(5);
+	});
+
+	it('adds gear from the closet, hiding what is already on the trip', async () => {
+		const added = tripGear(stove);
+		const requests = mockApi({ 'POST /api/v1/trips/trip-1/gear': () => added });
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'Add gear' }).click();
+
+		const dialog = screen.getByRole('dialog');
+		await expect.element(dialog.getByRole('button', { name: /Stove/ })).toBeVisible();
+		await expect.element(dialog.getByRole('button', { name: /Tent/ })).not.toBeInTheDocument();
+		await dialog.getByPlaceholder('Search').fill('zzz');
+		await expect.element(dialog.getByText('No more items to add.')).toBeVisible();
+		await dialog.getByPlaceholder('Search').fill('kitch');
+		await dialog.getByRole('button', { name: /Stove/ }).click();
+
+		await expect
+			.poll(async () => (await db.trips.get('trip-1'))?.gear_list.map((l) => l.gear_item.name))
+			.toContain('Stove');
+		expect(requests[0].body).toEqual({ gear_item_id: stove.id, quantity: 1, packed: false });
+	});
+
+	it('copies the gear list from another trip', async () => {
+		const other = trip({ id: 'trip-2', name: 'Linville Gorge', gear_list: [tripGear(stove)] });
+		await db.trips.put(other);
+		const copied = [tentLine, tripGear(stove)];
+		mockApi({ 'POST /api/v1/trips/trip-1/gear/copy-from/trip-2': () => copied });
+		const screen = await setup(trip({ gear_list: [tentLine] }));
+
+		await screen.getByRole('button', { name: 'Copy from trip' }).click();
+		const copy = screen.getByRole('button', { name: 'Copy gear' });
+		await expect.element(copy).toBeDisabled();
+		await screen.getByText('Choose a trip').click();
+		await screen.getByRole('option', { name: 'Linville Gorge' }).click();
+		await copy.click();
+
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+		expect((await db.trips.get('trip-1'))?.gear_list).toHaveLength(2);
+	});
+
+	it('removes gear from the trip after confirmation', async () => {
+		mockApi({ [`DELETE /api/v1/trips/trip-1/gear/${jacketLine.id}`]: () => respond(204) });
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'Remove Jacket' }).click();
+		await expect.element(screen.getByText('It stays in your gear closet.')).toBeVisible();
+		await screen.getByRole('button', { name: 'Remove', exact: true }).click();
+
+		await expect
+			.poll(async () => (await db.trips.get('trip-1'))?.gear_list.map((l) => l.gear_item.name))
+			.toEqual(['Tent', 'Stakes']);
+	});
+});
