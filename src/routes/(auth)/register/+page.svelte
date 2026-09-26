@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { register } from '$lib/auth/actions';
+	import {
+		MAX_PASSWORD_BYTES,
+		type PasswordStrength as Strength
+	} from '$lib/auth/password-strength';
 	import FormError from '$lib/components/FormError.svelte';
+	import PasswordStrength from '$lib/components/PasswordStrength.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
@@ -9,17 +14,23 @@
 	import { errorMessage } from '$lib/errors';
 
 	// Mirrors the API's rules so most mistakes are caught before a round trip. Password
-	// strength (zxcvbn score ≥ 3) is checked by the API and reported back.
+	// strength uses the same zxcvbn check as the API (score ≥ 3).
 	const USERNAME_PATTERN = '[a-zA-Z0-9_\\-]{3,30}';
 
 	let form = $state({ email: '', username: '', password: '', first_name: '', last_name: '' });
 	let error = $state<string | null>(null);
 	let busy = $state(false);
+	let strength = $state<Strength | null>(null);
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
-		if (new TextEncoder().encode(form.password).length > 72) {
-			error = 'Password is too long (72 bytes max).';
+		if (strength && !strength.ok) {
+			error = strength.message;
+			return;
+		}
+		// zxcvbn may not have loaded (e.g. offline); still catch what bcrypt can't take.
+		if (new TextEncoder().encode(form.password).length > MAX_PASSWORD_BYTES) {
+			error = `Password is too long (${MAX_PASSWORD_BYTES} bytes max).`;
 			return;
 		}
 		busy = true;
@@ -80,11 +91,15 @@
 					type="password"
 					autocomplete="new-password"
 					required
+					aria-invalid={strength ? !strength.ok : undefined}
 					bind:value={form.password}
 				/>
-				<p class="text-xs text-muted-foreground">
-					Use a long passphrase; weak passwords are rejected.
-				</p>
+				<PasswordStrength password={form.password} bind:strength />
+				{#if !strength}
+					<p class="text-xs text-muted-foreground">
+						Use a long passphrase; weak passwords are rejected.
+					</p>
+				{/if}
 			</div>
 			<Button type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create account'}</Button>
 		</form>
