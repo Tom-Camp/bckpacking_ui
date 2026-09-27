@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { toast } from 'svelte-sonner';
+import { describe, expect, it, vi } from 'vitest';
 import type { Trip } from '$lib/api/types';
 import { db } from '$lib/data/db';
 import { mockApi, respond } from '$lib/test/api';
 import { gearItem, trip, tripGear } from '$lib/test/fixtures';
 import { renderApp } from '$lib/test/render';
 import GearList from './GearList.svelte';
+
+vi.mock('svelte-sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const tent = gearItem({ name: 'Tent', category: 'shelter', weight_g: 1000 });
 const stakes = gearItem({ name: 'Stakes', category: 'shelter', weight_g: 10 });
@@ -75,13 +78,11 @@ describe('GearList', () => {
 		const added = tripGear(stove);
 		const requests = mockApi({ 'POST /api/v1/trips/trip-1/gear': () => added });
 		const screen = await setup();
-		await screen.getByRole('button', { name: 'Add gear' }).click();
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
 
 		const dialog = screen.getByRole('dialog');
 		await expect.element(dialog.getByRole('button', { name: /Stove/ })).toBeVisible();
 		await expect.element(dialog.getByRole('button', { name: /Tent/ })).not.toBeInTheDocument();
-		await dialog.getByPlaceholder('Search').fill('zzz');
-		await expect.element(dialog.getByText('No more items to add.')).toBeVisible();
 		await dialog.getByPlaceholder('Search').fill('kitch');
 		await dialog.getByRole('button', { name: /Stove/ }).click();
 
@@ -89,6 +90,72 @@ describe('GearList', () => {
 			.poll(async () => (await db.trips.get('trip-1'))?.gear_list.map((l) => l.gear_item.name))
 			.toContain('Stove');
 		expect(requests[0].body).toEqual({ gear_item_id: stove.id, quantity: 1, packed: false });
+	});
+
+	it('says so when everything in the closet is already on the trip', async () => {
+		const screen = await setup(
+			trip({ gear_list: [tentLine, stakesLine, jacketLine, tripGear(stove)] })
+		);
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
+		await expect.element(screen.getByText('No more items to add.')).toBeVisible();
+	});
+
+	it('creates new gear in the closet and adds it to the trip', async () => {
+		const created = gearItem({ name: 'Filter', category: 'water', weight_g: 85 });
+		const requests = mockApi({
+			'POST /api/v1/gear': () => created,
+			'POST /api/v1/trips/trip-1/gear': () => tripGear(created)
+		});
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'New gear' }).click();
+
+		await screen.getByLabelText('Name').fill('Filter');
+		await screen.getByLabelText('Category').fill('water');
+		await screen.getByLabelText('Weight (each)').fill('85');
+		await screen.getByRole('button', { name: 'Add to closet & trip' }).click();
+
+		await expect
+			.poll(async () => (await db.trips.get('trip-1'))?.gear_list.map((l) => l.gear_item.name))
+			.toContain('Filter');
+		expect(requests.map((r) => r.route)).toEqual([
+			'POST /api/v1/gear',
+			'POST /api/v1/trips/trip-1/gear'
+		]);
+		expect(requests[1].body).toEqual({ gear_item_id: created.id, quantity: 1, packed: false });
+		expect(await db.gearItems.get(created.id)).toEqual(created);
+		expect(toast.success).toHaveBeenCalledWith('Added Filter');
+	});
+
+	it('offers to create what a closet search did not find, with the name filled in', async () => {
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
+		await screen.getByPlaceholder('Search').fill(' Bear can ');
+		await screen.getByRole('button', { name: 'Create “Bear can”' }).click();
+
+		await expect.element(screen.getByRole('heading', { name: 'New gear' })).toBeVisible();
+		await expect.element(screen.getByLabelText('Name')).toHaveValue('Bear can');
+		await expect.element(screen.getByPlaceholder('Search')).not.toBeInTheDocument();
+	});
+
+	it('keeps the new closet item when adding it to the trip fails', async () => {
+		const created = gearItem({ name: 'Filter', category: 'water', weight_g: 85 });
+		mockApi({
+			'POST /api/v1/gear': () => created,
+			'POST /api/v1/trips/trip-1/gear': () => respond(500, { detail: 'Server error' })
+		});
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'New gear' }).click();
+		await screen.getByLabelText('Name').fill('Filter');
+		await screen.getByLabelText('Category').fill('water');
+		await screen.getByLabelText('Weight (each)').fill('85');
+		await screen.getByRole('button', { name: 'Add to closet & trip' }).click();
+
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+		await expect
+			.poll(() => vi.mocked(toast.error).mock.calls.at(-1)?.[0])
+			.toMatch(/^Filter is in your closet but wasn’t added to this trip\./);
+		expect(await db.gearItems.get(created.id)).toEqual(created);
+		expect((await db.trips.get('trip-1'))?.gear_list).toHaveLength(3);
 	});
 
 	it('copies the gear list from another trip', async () => {

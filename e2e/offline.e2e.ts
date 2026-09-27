@@ -35,7 +35,7 @@ test('trip data opens offline and offline edits sync on reconnect', async ({ pag
 	const tripId = page.url().split('/').pop()!;
 
 	await page.getByRole('tab', { name: 'Gear' }).click();
-	await page.getByRole('button', { name: 'Add gear' }).click();
+	await page.getByRole('button', { name: 'Add from closet' }).click();
 	await page.getByRole('button', { name: /Tent/ }).click();
 	await page.keyboard.press('Escape');
 	await expect(page.getByTestId('gear-Tent')).toBeVisible();
@@ -63,7 +63,8 @@ test('trip data opens offline and offline edits sync on reconnect', async ({ pag
 	await expect(page.getByTestId('sync-badge')).toContainText('2 pending');
 
 	// Online-only actions are disabled
-	await expect(page.getByRole('button', { name: 'Add gear' })).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'Add from closet' })).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'New gear' })).toBeDisabled();
 
 	// The print view works offline too
 	await page.goto(`/trips/${tripId}/print`);

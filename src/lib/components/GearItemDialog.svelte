@@ -16,12 +16,18 @@
 	let {
 		open = $bindable(false),
 		item,
-		categories
+		categories,
+		name = '',
+		oncreated
 	}: {
 		open: boolean;
 		/** Editing (works offline) vs creating (needs a connection). */
 		item?: GearItem;
 		categories: string[];
+		/** Prefills the name when creating. */
+		name?: string;
+		/** Runs after a new item is saved to the closet and the dialog closes. */
+		oncreated?: (item: GearItem) => void;
 	} = $props();
 
 	const app = getAppContext();
@@ -58,7 +64,7 @@
 	$effect(() => {
 		if (!open) return;
 		form = {
-			name: item?.name ?? '',
+			name: item?.name ?? name,
 			category: item?.category ?? '',
 			weight_g: item?.weight_g ?? null,
 			kind: item?.kind ?? 'base',
@@ -79,9 +85,14 @@
 			notes: form.notes.trim() || null
 		};
 		try {
-			if (item) await updateGearItem(item.id, body);
-			else await createGearItem(body);
-			open = false;
+			if (item) {
+				await updateGearItem(item.id, body);
+				open = false;
+			} else {
+				const created = await createGearItem(body);
+				open = false;
+				oncreated?.(created);
+			}
 		} catch (e) {
 			error = errorMessage(e);
 		} finally {
@@ -142,7 +153,9 @@
 				{#if item}
 					<Button type="submit" disabled={busy}>Save</Button>
 				{:else}
-					<OnlineButton type="submit" disabled={busy}>Add to closet</OnlineButton>
+					<OnlineButton type="submit" disabled={busy}>
+						{oncreated ? 'Add to closet & trip' : 'Add to closet'}
+					</OnlineButton>
 				{/if}
 			</Dialog.Footer>
 		</form>
