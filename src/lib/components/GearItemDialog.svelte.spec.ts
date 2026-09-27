@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { db } from '$lib/data/db';
 import { mockApi, respond } from '$lib/test/api';
 import { gearItem, trip, tripGear } from '$lib/test/fixtures';
@@ -33,6 +33,26 @@ describe('GearItemDialog', () => {
 			notes: null
 		});
 		expect(await db.gearItems.get(created.id)).toEqual(created);
+	});
+
+	it('prefills the name and hands the created item to oncreated', async () => {
+		const created = gearItem({ name: 'Bear can', category: 'kitchen', weight_g: 1000 });
+		mockApi({ 'POST /api/v1/gear': () => created });
+		const oncreated = vi.fn();
+		const screen = await renderApp(GearItemDialog, {
+			open: true,
+			categories: [],
+			name: 'Bear can',
+			oncreated
+		});
+
+		await expect.element(screen.getByLabelText('Name')).toHaveValue('Bear can');
+		await screen.getByLabelText('Category').fill('kitchen');
+		await screen.getByLabelText('Weight (each)').fill('35');
+		await screen.getByRole('button', { name: 'Add to closet & trip' }).click();
+
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+		expect(oncreated).toHaveBeenCalledExactlyOnceWith(created);
 	});
 
 	it('shows the API’s error and stays open', async () => {

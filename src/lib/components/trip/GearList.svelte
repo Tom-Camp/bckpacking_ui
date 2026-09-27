@@ -1,11 +1,14 @@
 <script lang="ts">
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import MinusIcon from '@lucide/svelte/icons/minus';
+	import PackagePlusIcon from '@lucide/svelte/icons/package-plus';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import type { Trip, TripGear } from '$lib/api/types';
+	import { toast } from 'svelte-sonner';
+	import type { GearItem, Trip, TripGear } from '$lib/api/types';
 	import { getAppContext } from '$lib/app-context';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
+	import GearItemDialog from '$lib/components/GearItemDialog.svelte';
 	import OnlineButton from '$lib/components/OnlineButton.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -18,7 +21,7 @@
 	import { allTrips, gearCloset } from '$lib/data/queries';
 	import { formatWeight } from '$lib/domain/units';
 	import { gearLineWeight } from '$lib/domain/weights';
-	import { attempt } from '$lib/errors';
+	import { attempt, errorMessage } from '$lib/errors';
 	import { cn } from '$lib/utils';
 	import WeightSummary from './WeightSummary.svelte';
 
@@ -54,6 +57,29 @@
 		)
 	);
 
+	// New-gear dialog: creates the closet item, then adds it to this trip
+	let newOpen = $state(false);
+	let newName = $state('');
+	const categories = $derived([...new Set((closet.current ?? []).map((i) => i.category))]);
+
+	function openNew(name = '') {
+		newName = name;
+		addOpen = false;
+		newOpen = true;
+	}
+
+	async function addNewToTrip(item: GearItem) {
+		try {
+			await addTripGear(trip.id, { gear_item_id: item.id, quantity: 1, packed: false });
+			toast.success(`Added ${item.name}`);
+		} catch (e) {
+			// The closet item exists, so it can still be added from the closet later.
+			toast.error(
+				`${item.name} is in your closet but wasn’t added to this trip. ${errorMessage(e)}`
+			);
+		}
+	}
+
 	// Copy-from-trip dialog
 	let copyOpen = $state(false);
 	let copySource = $state('');
@@ -77,21 +103,26 @@
 		</div>
 		<OnlineButton
 			variant="outline"
-			size="sm"
+			size="icon-sm"
+			aria-label="Copy from trip"
+			title="Copy from trip"
 			onclick={() => (copyOpen = true)}
 			disabled={!otherTrips.length}
 		>
-			<CopyIcon /> Copy from trip
+			<CopyIcon />
+		</OnlineButton>
+		<OnlineButton variant="outline" size="sm" onclick={() => openNew()}>
+			<PackagePlusIcon /> New gear
 		</OnlineButton>
 		<OnlineButton size="sm" onclick={() => (addOpen = true)}>
-			<PlusIcon /> Add gear
+			<PlusIcon /> Add from closet
 		</OnlineButton>
 	</div>
 
 	{#if !trip.gear_list.length}
 		<p class="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-			No gear yet. Add items from your <a href="/gear" class="underline">gear closet</a>, or copy
-			the list from another trip.
+			No gear yet. Add items from your <a href="/gear" class="underline">gear closet</a>, create new
+			gear, or copy the list from another trip.
 		</p>
 	{/if}
 
@@ -174,7 +205,7 @@
 		<Dialog.Header>
 			<Dialog.Title>Add from gear closet</Dialog.Title>
 			<Dialog.Description>
-				Need something new? Add it to your <a href="/gear" class="underline">gear closet</a> first.
+				Not there? Search for it and create it, and it’s added to your closet too.
 			</Dialog.Description>
 		</Dialog.Header>
 		<Input placeholder="Search" bind:value={search} />
@@ -199,7 +230,18 @@
 					</button>
 				</li>
 			{:else}
-				<li class="px-2 py-4 text-center text-sm text-muted-foreground">No more items to add.</li>
+				{#if search.trim()}
+					<li>
+						<button
+							class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
+							onclick={() => openNew(search.trim())}
+						>
+							<PackagePlusIcon class="size-4" /> Create “{search.trim()}”
+						</button>
+					</li>
+				{:else}
+					<li class="px-2 py-4 text-center text-sm text-muted-foreground">No more items to add.</li>
+				{/if}
 			{/each}
 		</ul>
 	</Dialog.Content>
@@ -236,3 +278,5 @@
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
+
+<GearItemDialog bind:open={newOpen} name={newName} {categories} oncreated={addNewToTrip} />
