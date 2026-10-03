@@ -1,5 +1,5 @@
-import type { GearItem, Trip, User } from '$lib/api/types';
-import { db } from './db';
+import type { GearCategoryOption, GearItem, Trip, User } from '$lib/api/types';
+import { db, GEAR_CATEGORIES_KEY, getMeta } from './db';
 
 // Query functions for `live()`. The UI only ever reads from IndexedDB; sync keeps it fresh.
 
@@ -14,6 +14,11 @@ export function tripById(id: string): Promise<Trip | undefined> {
 export async function gearCloset(): Promise<GearItem[]> {
 	const items = await db.gearItems.toArray();
 	return items.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+}
+
+/** The API's gear categories as of the last sync (empty before the first one). */
+export async function gearCategories(): Promise<GearCategoryOption[]> {
+	return (await getMeta<GearCategoryOption[]>(GEAR_CATEGORIES_KEY)) ?? [];
 }
 
 export function currentUser(): Promise<User | undefined> {

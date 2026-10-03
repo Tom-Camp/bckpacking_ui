@@ -2,7 +2,7 @@ import { liveQuery } from 'dexie';
 import { toast } from 'svelte-sonner';
 import { api, apiUrl, authedFetch, call, describeDetail } from '$lib/api/client';
 import { session } from '$lib/auth/session.svelte';
-import { db, getMeta, setMeta, type OutboxEntry } from '$lib/data/db';
+import { db, GEAR_CATEGORIES_KEY, getMeta, setMeta, type OutboxEntry } from '$lib/data/db';
 import { claimInFlight, getLocalVersion } from './outbox';
 import { syncStatus } from './status.svelte';
 
@@ -69,16 +69,22 @@ export async function flush(): Promise<FlushResult> {
  */
 export async function pull(): Promise<boolean> {
 	const versionAtStart = getLocalVersion();
-	const [me, trips, gear] = await Promise.all([
+	const [me, trips, gear, categories] = await Promise.all([
 		call(() => api.GET('/api/v1/users/me')),
 		call(() => api.GET('/api/v1/trips')),
-		call(() => api.GET('/api/v1/gear', { params: { query: { include_archived: true } } }))
+		call(() => api.GET('/api/v1/gear', { params: { query: { include_archived: true } } })),
+		call(() => api.GET('/api/v1/gear/categories'))
 	]);
 
 	return db.transaction('rw', [db.trips, db.gearItems, db.users, db.outbox, db.meta], async () => {
 		if (getLocalVersion() !== versionAtStart || (await db.outbox.count()) > 0) return false;
 		await Promise.all([db.trips.clear(), db.gearItems.clear(), db.users.clear()]);
-		await Promise.all([db.trips.bulkPut(trips), db.gearItems.bulkPut(gear), db.users.put(me)]);
+		await Promise.all([
+			db.trips.bulkPut(trips),
+			db.gearItems.bulkPut(gear),
+			db.users.put(me),
+			setMeta(GEAR_CATEGORIES_KEY, categories)
+		]);
 		const now = Date.now();
 		await setMeta('lastSyncedAt', now);
 		syncStatus.lastSyncedAt = now;

@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('$lib/sync/engine', () => ({ sync: vi.fn() }));
 
-const { db, clearLocalData } = await import('./db');
+const { db, clearLocalData, GEAR_CATEGORIES_KEY, setMeta } = await import('./db');
 const m = await import('./mutations');
-const { gearItem, trip, tripGear } = await import('$lib/test/fixtures');
+const { gearCategories, gearItem, trip, tripGear } = await import('$lib/test/fixtures');
 
 beforeEach(async () => {
 	await clearLocalData();
@@ -59,17 +59,19 @@ describe('offline edits', () => {
 	it('propagates closet edits to every trip using the item', async () => {
 		const item = gearItem();
 		await db.gearItems.put(item);
+		await setMeta(GEAR_CATEGORIES_KEY, gearCategories);
 		await db.trips.bulkPut([
 			trip({ id: 'a', gear_list: [tripGear(item)] }),
 			trip({ id: 'b', gear_list: [tripGear(item)] })
 		]);
 
-		await m.updateGearItem(item.id, { weight_g: 900, category: ' Shelter ' });
+		await m.updateGearItem(item.id, { weight_g: 900, category: 'sleep' });
 
 		for (const id of ['a', 'b']) {
 			const g = (await db.trips.get(id))?.gear_list[0].gear_item;
 			expect(g?.weight_g).toBe(900);
-			expect(g?.category).toBe('shelter');
+			expect(g?.category).toBe('sleep');
+			expect(g?.category_label).toBe('Sleep');
 		}
 	});
 });

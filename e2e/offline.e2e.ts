@@ -18,7 +18,8 @@ test('trip data opens offline and offline edits sync on reconnect', async ({ pag
 	await page.getByRole('link', { name: 'Gear closet' }).click();
 	await page.getByRole('button', { name: 'New gear' }).click();
 	await page.getByLabel('Name').fill('Tent');
-	await page.getByLabel('Category').fill('shelter');
+	await page.getByLabel('Category').click();
+	await page.getByRole('option', { name: 'Shelter' }).click();
 	await page.getByLabel('Weight (each)').fill('32');
 	await page.getByRole('button', { name: 'Add to closet' }).click();
 	await expect(page.getByText('2 lb')).toBeVisible();

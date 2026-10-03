@@ -2,13 +2,15 @@
 //
 // Components read and write the real IndexedDB, which is wiped before each test. What leaves
 // the browser is replaced: the sync engine (no background requests), SvelteKit's router, and
-// `fetch` (see `mockApi` in ./api.ts).
+// `fetch` (see `mockApi` in ./api.ts). Each test starts like a synced device: the gear category
+// list is cached.
 
 import '../../routes/layout.css';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { session } from '$lib/auth/session.svelte';
-import { clearLocalData } from '$lib/data/db';
+import { clearLocalData, GEAR_CATEGORIES_KEY, setMeta } from '$lib/data/db';
 import { syncStatus } from '$lib/sync/status.svelte';
+import { gearCategories } from './fixtures';
 
 vi.mock('$lib/sync/engine', () => ({
 	sync: vi.fn(async () => {}),
@@ -27,6 +29,7 @@ vi.mock('$app/state', () => ({
 
 beforeEach(async () => {
 	await clearLocalData();
+	await setMeta(GEAR_CATEGORIES_KEY, gearCategories);
 	localStorage.clear();
 	session.clear();
 	Object.assign(syncStatus, {

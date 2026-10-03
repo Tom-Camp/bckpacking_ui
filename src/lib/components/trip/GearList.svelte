@@ -18,7 +18,8 @@
 	import * as Select from '$lib/components/ui/select';
 	import { live } from '$lib/data/live.svelte';
 	import { addTripGear, copyGearFrom, removeTripGear, updateTripGear } from '$lib/data/mutations';
-	import { allTrips, gearCloset } from '$lib/data/queries';
+	import { allTrips, gearCategories, gearCloset } from '$lib/data/queries';
+	import { categoryOption, groupByCategory } from '$lib/domain/gear';
 	import { formatWeight } from '$lib/domain/units';
 	import { gearLineWeight } from '$lib/domain/weights';
 	import { attempt, errorMessage } from '$lib/errors';
@@ -30,37 +31,36 @@
 	const app = getAppContext();
 	const closet = live(gearCloset);
 	const trips = live(allTrips);
+	const categories = live(gearCategories);
 
 	const groups = $derived.by(() => {
-		const byCategory: Record<string, TripGear[]> = {};
-		for (const line of trip.gear_list) (byCategory[line.gear_item.category] ??= []).push(line);
-		return Object.entries(byCategory)
-			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([category, lines]) => ({
+		return groupByCategory(trip.gear_list, (l) => l.gear_item, categories.current ?? []).map(
+			({ category, entries: lines }) => ({
 				category,
 				lines: lines.sort((a, b) => a.gear_item.name.localeCompare(b.gear_item.name)),
 				weight: lines.reduce((s, l) => s + (l.gear_item.kind === 'worn' ? 0 : gearLineWeight(l)), 0)
-			}));
+			})
+		);
 	});
 	const packed = $derived(trip.gear_list.filter((l) => l.packed).length);
 
 	// Add-from-closet dialog
 	let addOpen = $state(false);
 	let search = $state('');
+	const categoryLabel = (i: GearItem) => categoryOption(i, categories.current ?? []).label;
 	const onTrip = $derived(new Set(trip.gear_list.map((l) => l.gear_item.id)));
 	const available = $derived(
 		(closet.current ?? []).filter(
 			(i) =>
 				!i.archived_at &&
 				!onTrip.has(i.id) &&
-				`${i.name} ${i.category}`.toLowerCase().includes(search.toLowerCase())
+				`${i.name} ${categoryLabel(i)}`.toLowerCase().includes(search.toLowerCase())
 		)
 	);
 
 	// New-gear dialog: creates the closet item, then adds it to this trip
 	let newOpen = $state(false);
 	let newName = $state('');
-	const categories = $derived([...new Set((closet.current ?? []).map((i) => i.category))]);
 
 	function openNew(name = '') {
 		newName = name;
@@ -126,10 +126,10 @@
 		</p>
 	{/if}
 
-	{#each groups as group (group.category)}
+	{#each groups as group (group.category.value)}
 		<section class="grid grid-cols-1 gap-1">
 			<h3 class="flex items-baseline justify-between px-1 text-sm font-medium">
-				<span class="capitalize">{group.category}</span>
+				<span>{group.category.label}</span>
 				<span class="text-xs font-normal text-muted-foreground tabular-nums">
 					{formatWeight(group.weight, app.units)}
 				</span>
@@ -222,7 +222,7 @@
 					>
 						<span>
 							{item.name}
-							<span class="text-xs text-muted-foreground capitalize">· {item.category}</span>
+							<span class="text-xs text-muted-foreground">· {categoryLabel(item)}</span>
 						</span>
 						<span class="text-muted-foreground tabular-nums"
 							>{formatWeight(item.weight_g, app.units)}</span
@@ -279,4 +279,4 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<GearItemDialog bind:open={newOpen} name={newName} {categories} oncreated={addNewToTrip} />
+<GearItemDialog bind:open={newOpen} name={newName} oncreated={addNewToTrip} />

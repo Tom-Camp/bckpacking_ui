@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { gearItem, trip, tripGear } from '$lib/test/fixtures';
+import { gearCategories, gearItem, trip, tripGear } from '$lib/test/fixtures';
 import { checklistReady, shuttleStatusFor } from './checklist';
 import { dayLabel, planByDay, tripDays } from './food';
+import { categoryOption, groupByCategory, isGearCategory } from './gear';
 import { formatDistance, formatWeight, fromInput, G_PER_OZ, toInput } from './units';
 import { summarizeWeights } from './weights';
 
@@ -117,5 +118,43 @@ describe('checklist', () => {
 		expect(shuttleStatusFor('point-to-point')).toBe('todo');
 		expect(shuttleStatusFor('loop')).toBe('not_applicable');
 		expect(shuttleStatusFor('out-and-back')).toBe('not_applicable');
+	});
+});
+
+describe('gear categories', () => {
+	const options = gearCategories;
+
+	it('looks up labels and files unknown categories under misc', () => {
+		expect(categoryOption({ category: 'cooking_water' }, options).label).toBe('Cooking & Water');
+		expect(categoryOption({ category: 'kitchen' }, options)).toEqual({
+			value: 'misc',
+			label: 'Miscellaneous'
+		});
+		expect(isGearCategory('shelter', options)).toBe(true);
+		expect(isGearCategory('kitchen', options)).toBe(false);
+	});
+
+	it('uses the item’s own label before the list is cached', () => {
+		expect(
+			categoryOption({ category: 'cooking_water', category_label: 'Cooking & Water' }, [])
+		).toEqual({ value: 'cooking_water', label: 'Cooking & Water' });
+		expect(categoryOption({ category: 'kitchen' }, [])).toEqual({
+			value: 'kitchen',
+			label: 'kitchen'
+		});
+		expect(isGearCategory('shelter', [])).toBe(false);
+	});
+
+	it('groups by category, ordered by label', () => {
+		const items = [
+			gearItem({ name: 'Tent', category: 'shelter' }),
+			gearItem({ name: 'Stove', category: 'cooking_water' }),
+			gearItem({ name: 'Bivy', category: 'shelter' })
+		];
+		const groups = groupByCategory(items, (i) => i, options);
+		expect(groups.map((g) => [g.category.label, g.entries.map((i) => i.name)])).toEqual([
+			['Cooking & Water', ['Stove']],
+			['Shelter', ['Tent', 'Bivy']]
+		]);
 	});
 });
