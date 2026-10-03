@@ -68,12 +68,13 @@ jobs:
         with:
           persist-credentials: false
 
-      # The e2e test drives the real API through the preview server's /api proxy.
+      # The e2e test drives the real API through the preview server's /api proxy. It runs against
+      # the API branch matching where this change is headed: main for main, develop otherwise.
       - name: Check out API
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Tom-Camp/bckpacking_api
-          ref: main
+          ref: ${{ (github.base_ref || github.ref_name) == 'main' && 'main' || 'develop' }}
           path: api
           persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
