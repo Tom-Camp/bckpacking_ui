@@ -213,6 +213,30 @@ export interface paths {
         patch: operations["update_trip_api_v1_trips__trip_id__patch"];
         trace?: never;
     };
+    "/api/v1/trips/{trip_id}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Share Trip
+         * @description Turn on the public read-only link; returns the existing token if the trip is already shared.
+         */
+        post: operations["share_trip_api_v1_trips__trip_id__share_post"];
+        /**
+         * Unshare Trip
+         * @description Revoke the share link. Sharing again afterwards issues a new token.
+         */
+        delete: operations["unshare_trip_api_v1_trips__trip_id__share_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/trips/{trip_id}/gear": {
         parameters: {
             query?: never;
@@ -390,6 +414,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gear/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Gear Categories */
+        get: operations["list_gear_categories_api_v1_gear_categories_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gear/{item_id}": {
         parameters: {
             query?: never;
@@ -423,6 +464,23 @@ export interface paths {
         put?: never;
         /** Restore Gear Item */
         post: operations["restore_gear_item_api_v1_gear__item_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shared/trips/{share_token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shared Trip */
+        get: operations["get_shared_trip_api_v1_shared_trips__share_token__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -512,12 +570,23 @@ export interface components {
             /** Target Food G Per Day */
             target_food_g_per_day?: number;
         };
+        /**
+         * GearCategory
+         * @enum {string}
+         */
+        GearCategory: "clothing" | "cooking_water" | "misc" | "navigation_safety" | "shelter" | "sleep";
+        /** GearCategoryOption */
+        GearCategoryOption: {
+            value: components["schemas"]["GearCategory"];
+            /** Label */
+            label: string;
+        };
         /** GearItemCreate */
         GearItemCreate: {
             /** Name */
             name: string;
-            /** Category */
-            category: string;
+            /** @default misc */
+            category: components["schemas"]["GearCategory"];
             /**
              * Weight G
              * @default 0
@@ -537,8 +606,7 @@ export interface components {
             id: string;
             /** Name */
             name: string;
-            /** Category */
-            category: string;
+            category: components["schemas"]["GearCategory"];
             /** Weight G */
             weight_g: number;
             kind: components["schemas"]["GearKind"];
@@ -556,13 +624,14 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Category Label */
+            readonly category_label: string;
         };
         /** GearItemUpdate */
         GearItemUpdate: {
             /** Name */
             name?: string;
-            /** Category */
-            category?: string;
+            category?: components["schemas"]["GearCategory"];
             /** Weight G */
             weight_g?: number;
             kind?: components["schemas"]["GearKind"];
@@ -587,6 +656,94 @@ export interface components {
         /** SetRoleRequest */
         SetRoleRequest: {
             role: components["schemas"]["UserRole"];
+        };
+        /**
+         * SharedGearItemRead
+         * @description A closet item as seen through a share link: no private notes or archive state.
+         */
+        SharedGearItemRead: {
+            /** Name */
+            name: string;
+            category: components["schemas"]["GearCategory"];
+            /** Weight G */
+            weight_g: number;
+            kind: components["schemas"]["GearKind"];
+        };
+        /** SharedTripGearRead */
+        SharedTripGearRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            gear_item: components["schemas"]["SharedGearItemRead"];
+            /** Quantity */
+            quantity: number;
+            /** Packed */
+            packed: boolean;
+        };
+        /** SharedTripOwnerRead */
+        SharedTripOwnerRead: {
+            /** Username */
+            username: string;
+        };
+        /**
+         * SharedTripRead
+         * @description Public read-only view of a shared trip.
+         *
+         *     A separate allowlist rather than TripRead minus fields, so new Trip columns stay private by default.
+         *     Omits user_id, emergency_contact, notes, and the share token itself.
+         */
+        SharedTripRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Area */
+            area: string | null;
+            trip_type: components["schemas"]["TripType"];
+            /** Start Date */
+            start_date: string | null;
+            /** End Date */
+            end_date: string | null;
+            /** Start Trailhead */
+            start_trailhead: string | null;
+            /** End Trailhead */
+            end_trailhead: string | null;
+            /** Total Distance M */
+            total_distance_m: number | null;
+            /** Elevation Gain M */
+            elevation_gain_m: number | null;
+            /** Water Carry L */
+            water_carry_l: number;
+            /** Map Link */
+            map_link: string | null;
+            food_plan: components["schemas"]["FoodPlannerRead"] | null;
+            /** Checklist Items */
+            checklist_items: components["schemas"]["ChecklistItemRead"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            owner: components["schemas"]["SharedTripOwnerRead"];
+            /** Gear List */
+            gear_list: components["schemas"]["SharedTripGearRead"][];
+            /**
+             * Checklist Ready
+             * @description True when no checklist item is still to do (done and not-applicable both count).
+             */
+            readonly checklist_ready: boolean;
         };
         /** TokenResponse */
         TokenResponse: {
@@ -791,11 +948,6 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /**
-             * User Id
-             * Format: uuid
-             */
-            user_id: string;
             /** Name */
             name: string;
             /** Description */
@@ -819,15 +971,9 @@ export interface components {
             water_carry_l: number;
             /** Map Link */
             map_link: string | null;
-            /** Emergency Contact */
-            emergency_contact: string | null;
             food_plan: components["schemas"]["FoodPlannerRead"] | null;
-            /** Gear List */
-            gear_list: components["schemas"]["TripGearRead"][];
             /** Checklist Items */
             checklist_items: components["schemas"]["ChecklistItemRead"][];
-            /** Notes */
-            notes: components["schemas"]["TripNoteRead"][];
             /**
              * Created At
              * Format: date-time
@@ -839,10 +985,28 @@ export interface components {
              */
             updated_at: string;
             /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Emergency Contact */
+            emergency_contact: string | null;
+            /** Gear List */
+            gear_list: components["schemas"]["TripGearRead"][];
+            /** Notes */
+            notes: components["schemas"]["TripNoteRead"][];
+            /** Share Token */
+            share_token: string | null;
+            /**
              * Checklist Ready
              * @description True when no checklist item is still to do (done and not-applicable both count).
              */
             readonly checklist_ready: boolean;
+        };
+        /** TripShareRead */
+        TripShareRead: {
+            /** Share Token */
+            share_token: string;
         };
         /**
          * TripType
@@ -1510,6 +1674,66 @@ export interface operations {
             };
         };
     };
+    share_trip_api_v1_trips__trip_id__share_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripShareRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unshare_trip_api_v1_trips__trip_id__share_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     add_trip_gear_api_v1_trips__trip_id__gear_post: {
         parameters: {
             query?: never;
@@ -1980,6 +2204,26 @@ export interface operations {
             };
         };
     };
+    list_gear_categories_api_v1_gear_categories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GearCategoryOption"][];
+                };
+            };
+        };
+    };
     get_gear_item_api_v1_gear__item_id__get: {
         parameters: {
             query?: never;
@@ -2093,6 +2337,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GearItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shared_trip_api_v1_shared_trips__share_token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                share_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedTripRead"];
                 };
             };
             /** @description Validation Error */

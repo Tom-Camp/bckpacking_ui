@@ -5,16 +5,16 @@
 	import { page } from '$app/state';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import PrinterIcon from '@lucide/svelte/icons/printer';
-	import type { TripGear } from '$lib/api/types';
 	import { Button } from '$lib/components/ui/button';
 	import { live } from '$lib/data/live.svelte';
-	import { currentUser, tripById } from '$lib/data/queries';
+	import { currentUser, gearCategories, tripById } from '$lib/data/queries';
 	import {
 		CHECKLIST_LABELS,
 		sortChecklist,
 		STATUS_LABELS,
 		TRIP_TYPE_LABELS
 	} from '$lib/domain/checklist';
+	import { groupByCategory } from '$lib/domain/gear';
 	import { dayLabel, formatDateRange, MEAL_LABELS, planByDay } from '$lib/domain/food';
 	import { formatDistance, formatElevation, formatVolume, formatWeight } from '$lib/domain/units';
 	import { gearLineWeight, summarizeWeights } from '$lib/domain/weights';
@@ -24,16 +24,14 @@
 		() => page.params.id ?? ''
 	);
 	const me = live(currentUser);
+	const categories = live(gearCategories);
 	const units = $derived(me.current?.measurements ?? 'imperial');
 
 	const t = $derived(trip.current);
 	const weights = $derived(t ? summarizeWeights(t, me.current?.body_weight_g) : null);
-	const gearGroups = $derived.by(() => {
-		if (!t) return [];
-		const byCategory: Record<string, TripGear[]> = {};
-		for (const line of t.gear_list) (byCategory[line.gear_item.category] ??= []).push(line);
-		return Object.entries(byCategory).sort(([a], [b]) => a.localeCompare(b));
-	});
+	const gearGroups = $derived(
+		t ? groupByCategory(t.gear_list, (l) => l.gear_item, categories.current ?? []) : []
+	);
 	const days = $derived(t ? planByDay(t, t.food_plan) : []);
 </script>
 
@@ -133,9 +131,9 @@
 			<section class="mb-6">
 				<h2 class="mb-2 border-b text-lg font-bold">Gear</h2>
 				<div class="columns-2 gap-6">
-					{#each gearGroups as [category, lines] (category)}
+					{#each gearGroups as { category, entries: lines } (category.value)}
 						<div class="mb-3 break-inside-avoid">
-							<h3 class="font-semibold capitalize">{category}</h3>
+							<h3 class="font-semibold">{category.label}</h3>
 							<ul>
 								{#each lines as line (line.id)}
 									<li class="flex gap-2">

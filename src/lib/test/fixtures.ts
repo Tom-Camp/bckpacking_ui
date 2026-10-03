@@ -1,12 +1,32 @@
-import type { GearItem, Trip, TripFood, TripGear, TripNote, User } from '$lib/api/types';
+import type {
+	GearCategoryOption,
+	GearItem,
+	Trip,
+	TripFood,
+	TripGear,
+	TripNote,
+	User
+} from '$lib/api/types';
 
 const ts = '2026-01-01T00:00:00Z';
+
+/** What `GET /api/v1/gear/categories` returns. */
+export const gearCategories: GearCategoryOption[] = [
+	{ value: 'clothing', label: 'Clothing' },
+	{ value: 'cooking_water', label: 'Cooking & Water' },
+	{ value: 'misc', label: 'Miscellaneous' },
+	{ value: 'navigation_safety', label: 'Navigation & Safety' },
+	{ value: 'shelter', label: 'Shelter' },
+	{ value: 'sleep', label: 'Sleep' }
+];
 
 export function gearItem(overrides: Partial<GearItem> = {}): GearItem {
 	return {
 		id: crypto.randomUUID(),
 		name: 'Tent',
 		category: 'shelter',
+		category_label:
+			gearCategories.find((c) => c.value === (overrides.category ?? 'shelter'))?.label ?? '',
 		weight_g: 1000,
 		kind: 'base',
 		notes: null,
@@ -58,6 +78,7 @@ export function trip(overrides: Partial<Trip> = {}): Trip {
 			updated_at: ts
 		},
 		gear_list: [],
+		share_token: null,
 		checklist_items: (['permit', 'shuttle_scheduled'] as const).map((item) => ({
 			id: crypto.randomUUID(),
 			item,

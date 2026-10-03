@@ -21,6 +21,8 @@ export type GearItem = Schemas['GearItemRead'];
 export type GearItemCreate = Schemas['GearItemCreate'];
 export type GearItemUpdate = Schemas['GearItemUpdate'];
 export type GearKind = Schemas['GearKind'];
+export type GearCategory = Schemas['GearCategory'];
+export type GearCategoryOption = Schemas['GearCategoryOption'];
 
 export type TripGear = Schemas['TripGearRead'];
 export type TripGearCreate = Schemas['TripGearCreate'];

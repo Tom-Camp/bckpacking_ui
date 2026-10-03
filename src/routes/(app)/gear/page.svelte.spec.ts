@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { db } from '$lib/data/db';
+import type { GearCategory } from '$lib/api/types';
+import { db, GEAR_CATEGORIES_KEY } from '$lib/data/db';
 import { mockApi, respond } from '$lib/test/api';
 import { gearItem } from '$lib/test/fixtures';
 import { renderApp } from '$lib/test/render';
 import Page from './+page.svelte';
 
 const tent = gearItem({ name: 'Tent', category: 'shelter', weight_g: 1000 });
-const stove = gearItem({ name: 'Stove', category: 'kitchen', weight_g: 85, notes: 'Canister' });
+const stove = gearItem({
+	name: 'Stove',
+	category: 'cooking_water',
+	weight_g: 85,
+	notes: 'Canister'
+});
 const oldTarp = gearItem({
 	name: 'Old tarp',
 	category: 'shelter',
@@ -28,8 +34,8 @@ describe('gear closet page', () => {
 		const screen = await setup();
 
 		const headings = screen.getByRole('heading', { level: 2 });
-		await expect.element(headings.first()).toHaveTextContent('kitchen');
-		await expect.element(headings.nth(1)).toHaveTextContent('shelter');
+		await expect.element(headings.first()).toHaveTextContent('Cooking & Water');
+		await expect.element(headings.nth(1)).toHaveTextContent('Shelter');
 		await expect.element(screen.getByText('85 g')).toBeVisible();
 		await expect.element(screen.getByText('Old tarp')).not.toBeInTheDocument();
 
@@ -44,6 +50,27 @@ describe('gear closet page', () => {
 
 		await expect.element(screen.getByText('Stove')).toBeVisible();
 		await expect.element(screen.getByText('Tent')).not.toBeInTheDocument();
+
+		await screen.getByPlaceholder('Search gear').fill('cooking &');
+		await expect.element(screen.getByText('Stove')).toBeVisible();
+		await expect.element(screen.getByText('Tent')).not.toBeInTheDocument();
+	});
+
+	it('shows labels from the cached category list and files old categories under misc', async () => {
+		await db.meta.put({
+			key: GEAR_CATEGORIES_KEY,
+			value: [
+				{ value: 'shelter', label: 'Shelter & Tarps' },
+				{ value: 'misc', label: 'Everything else' }
+			]
+		});
+		await db.gearItems.put(gearItem({ name: 'Trowel', category: 'hygiene' as GearCategory }));
+		const screen = await setup();
+
+		const headings = screen.getByRole('heading', { level: 2 });
+		await expect.element(headings.first()).toHaveTextContent('Everything else');
+		await expect.element(headings.nth(1)).toHaveTextContent('Shelter & Tarps');
+		await expect.element(screen.getByText('Trowel')).toBeVisible();
 	});
 
 	it('archives and restores through the API', async () => {

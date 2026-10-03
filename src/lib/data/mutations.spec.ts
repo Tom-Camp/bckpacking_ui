@@ -64,12 +64,13 @@ describe('offline edits', () => {
 			trip({ id: 'b', gear_list: [tripGear(item)] })
 		]);
 
-		await m.updateGearItem(item.id, { weight_g: 900, category: ' Shelter ' });
+		await m.updateGearItem(item.id, { weight_g: 900, category: 'sleep' });
 
 		for (const id of ['a', 'b']) {
 			const g = (await db.trips.get(id))?.gear_list[0].gear_item;
 			expect(g?.weight_g).toBe(900);
-			expect(g?.category).toBe('shelter');
+			expect(g?.category).toBe('sleep');
+			expect(g?.category_label).toBe('Sleep');
 		}
 	});
 });

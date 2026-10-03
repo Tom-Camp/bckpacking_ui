@@ -12,30 +12,30 @@
 	import { Label } from '$lib/components/ui/label';
 	import { live } from '$lib/data/live.svelte';
 	import { archiveGearItem, restoreGearItem } from '$lib/data/mutations';
-	import { gearCloset } from '$lib/data/queries';
+	import { gearCategories, gearCloset } from '$lib/data/queries';
+	import { categoryOption, groupByCategory } from '$lib/domain/gear';
 	import { formatWeight } from '$lib/domain/units';
 	import { attempt } from '$lib/errors';
 	import { cn } from '$lib/utils';
 
 	const app = getAppContext();
 	const closet = live(gearCloset);
+	const categories = live(gearCategories);
 
 	let showArchived = $state(false);
 	let search = $state('');
 	let dialogOpen = $state(false);
 	let editing = $state<GearItem | undefined>();
 
-	const categories = $derived([...new Set((closet.current ?? []).map((i) => i.category))]);
 	const groups = $derived.by(() => {
 		const q = search.toLowerCase();
+		const label = (i: GearItem) => categoryOption(i, categories.current ?? []).label;
 		const items = (closet.current ?? []).filter(
 			(i) =>
 				(showArchived || !i.archived_at) &&
-				`${i.name} ${i.category} ${i.notes ?? ''}`.toLowerCase().includes(q)
+				`${i.name} ${label(i)} ${i.notes ?? ''}`.toLowerCase().includes(q)
 		);
-		const byCategory: Record<string, GearItem[]> = {};
-		for (const item of items) (byCategory[item.category] ??= []).push(item);
-		return Object.entries(byCategory);
+		return groupByCategory(items, (i) => i, categories.current ?? []);
 	});
 
 	function open(item?: GearItem) {
@@ -69,11 +69,11 @@
 		</p>
 	{/if}
 
-	{#each groups as [category, items] (category)}
+	{#each groups as { category, entries } (category.value)}
 		<section class="grid grid-cols-1 gap-1">
-			<h2 class="px-1 text-sm font-medium capitalize">{category}</h2>
+			<h2 class="px-1 text-sm font-medium">{category.label}</h2>
 			<ul class="grid grid-cols-1 divide-y rounded-lg border">
-				{#each items as item (item.id)}
+				{#each entries as item (item.id)}
 					<li class="flex items-center gap-3 px-3 py-2">
 						<button class="min-w-0 flex-1 text-left" onclick={() => open(item)}>
 							<p
@@ -120,4 +120,4 @@
 	{/each}
 </div>
 
-<GearItemDialog bind:open={dialogOpen} item={editing} {categories} />
+<GearItemDialog bind:open={dialogOpen} item={editing} />

@@ -8,6 +8,7 @@ const { session } = await import('$lib/auth/session.svelte');
 const { enqueuePatch } = await import('./outbox');
 const { flush, pull } = await import('./engine');
 const { trip } = await import('$lib/test/fixtures');
+const { gearCategories } = await import('$lib/data/queries');
 
 const json = (status: number, body: unknown = {}) =>
 	new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -89,12 +90,15 @@ describe('flush', () => {
 });
 
 describe('pull', () => {
+	const categories = [{ value: 'shelter', label: 'Shelter (server)' }];
+
 	function mockServer() {
 		fetchMock.mockImplementation(async (req: Request) => {
 			const path = new URL(req.url).pathname;
 			if (path === '/api/v1/users/me') return json(200, { id: 'user-1', measurements: 'imperial' });
 			if (path === '/api/v1/trips') return json(200, [trip({ id: 'server-trip' })]);
 			if (path === '/api/v1/gear') return json(200, []);
+			if (path === '/api/v1/gear/categories') return json(200, categories);
 			return json(404);
 		});
 	}
@@ -106,6 +110,7 @@ describe('pull', () => {
 		expect(await pull()).toBe(true);
 		expect((await db.trips.toArray()).map((t) => t.id)).toEqual(['server-trip']);
 		expect(await db.users.get('user-1')).toBeDefined();
+		expect(await gearCategories()).toEqual(categories);
 	});
 
 	it('does not overwrite local edits that are still queued', async () => {
