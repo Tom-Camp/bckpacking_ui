@@ -35,11 +35,25 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # Argus's scanner-opengrep action scans nothing: OpengrepScanner doesn't set
+      # container_entrypoint, so the image (ENTRYPOINT ["opengrep"]) runs
+      # `opengrep opengrep ...`, aborts with "File not found: opengrep" and reports a
+      # clean pass. Run the same digest-pinned image (argus/containers.py at 1.12.7)
+      # directly until Argus sets container_entrypoint = "opengrep".
+      # -w + "." keeps SARIF paths repo-relative so alerts map to files.
       - name: Run OpenGrep
-        uses: huntridge-labs/argus/.github/actions/scanner-opengrep@309e971918f9852c4a35e34fa145b5412697829f # 1.12.7
+        env:
+          OPENGREP_IMAGE: ghcr.io/huntridge-labs/argus/scanner-opengrep:1.12.7@sha256:11a58311bac55a366f0a858bfdbf02bbf76aef0bf54cd52fef79a8e83a781369
+        run: |
+          mkdir -p opengrep-reports
+          docker run --rm -v "$PWD:/workspace:ro" -v "$PWD/opengrep-reports:/output" -w /workspace \
+            "$OPENGREP_IMAGE" --config auto --sarif --output /output/opengrep.sarif .
+
+      - name: Upload OpenGrep SARIF
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
-          enable_code_security: 'true'
-          fail_on_severity: 'high'
+          sarif_file: opengrep-reports/opengrep.sarif
+          category: opengrep
 
       - name: Run Gitleaks (Secrets Detection)
         uses: huntridge-labs/argus/.github/actions/scanner-gitleaks@309e971918f9852c4a35e34fa145b5412697829f # 1.12.7
@@ -49,6 +63,16 @@ jobs:
           post_pr_comment: 'true'
           enable_code_security: 'true'
           fail_on_severity: 'high'
+
+      # Runs after Gitleaks so a failure here doesn't skip it. Fails only on
+      # error-level rules; warnings and notes show as code scanning alerts.
+      # OpenGrep's SARIF has no per-result level, so read each rule's default.
+      - name: Check OpenGrep results
+        run: |
+          jq -e '(.runs[0].tool.driver.rules | map({(.id): .defaultConfiguration.level}) | add) as $lv
+            | [.runs[].results[] | select((.level // $lv[.ruleId]) == "error")] | length == 0' \
+            opengrep-reports/opengrep.sarif > /dev/null \
+            || { echo "OpenGrep found error-level results; see the code scanning alerts."; exit 1; }
 
   sbom-generation:
     name: Generate SBOM
