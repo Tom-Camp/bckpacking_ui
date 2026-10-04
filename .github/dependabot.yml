@@ -1,0 +1,44 @@
+# Commit messages follow Conventional Commits (@commitlint/config-conventional):
+#   npm runtime deps -> chore(deps): bump ...
+#   npm dev deps     -> chore(deps-dev): bump ...
+#   GitHub Actions   -> ci(deps): bump ...
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    # Wait for new releases to settle before proposing them (security updates
+    # ignore cooldowns and still open immediately).
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns:
+          - '*'
