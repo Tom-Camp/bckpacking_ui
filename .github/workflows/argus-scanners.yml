@@ -45,7 +45,9 @@ jobs:
         env:
           OPENGREP_IMAGE: ghcr.io/huntridge-labs/argus/scanner-opengrep:1.12.7@sha256:11a58311bac55a366f0a858bfdbf02bbf76aef0bf54cd52fef79a8e83a781369
         run: |
+          # The image runs as argus (uid 1000); the runner user is uid 1001.
           mkdir -p opengrep-reports
+          chmod 777 opengrep-reports
           docker run --rm -v "$PWD:/workspace:ro" -v "$PWD/opengrep-reports:/output" -w /workspace \
             "$OPENGREP_IMAGE" --config auto --sarif --output /output/opengrep.sarif .
 
