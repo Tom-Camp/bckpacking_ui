@@ -21,11 +21,42 @@ updates:
       prefix: chore
       prefix-development: chore
       include: scope
+    # A dependency joins the first group it matches, so the lockstep groups
+    # (all update types, majors included) must come before npm-minor-patch.
+    # Each one holds packages whose peer ranges pin each other's major, which
+    # fail `npm ci` with ERESOLVE when Dependabot bumps them one at a time.
     groups:
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+          - 'vitest-browser-svelte'
+      vite:
+        patterns:
+          - 'vite'
+          - '@sveltejs/vite-plugin-svelte'
+          - '@sveltejs/kit'
+      eslint:
+        patterns:
+          - 'eslint'
+          - '@eslint/js'
+      tailwind:
+        patterns:
+          - 'tailwindcss'
+          - '@tailwindcss/*'
+      commitlint:
+        patterns:
+          - '@commitlint/*'
       npm-minor-patch:
         update-types:
           - minor
           - patch
+    ignore:
+      # @types/node must match the Node runtime's major. Bump it by hand along
+      # with NODE_VERSION in .github/workflows/ (and `engines`, if one is added).
+      - dependency-name: '@types/node'
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
