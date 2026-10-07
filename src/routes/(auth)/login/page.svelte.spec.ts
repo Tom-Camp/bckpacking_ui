@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { goto } from '$app/navigation';
 import { session } from '$lib/auth/session.svelte';
-import { db } from '$lib/data/db';
+import { db, GEAR_CATEGORIES_KEY, setMeta } from '$lib/data/db';
+import { enqueuePatch } from '$lib/sync/outbox';
 import { mockApi, respond } from '$lib/test/api';
-import { user } from '$lib/test/fixtures';
+import { gearItem, trip, user } from '$lib/test/fixtures';
 import Page from './+page.svelte';
 
 async function signIn(screen: Awaited<ReturnType<typeof render>>) {
@@ -83,6 +84,85 @@ describe('login page', () => {
 		await expect.element(screen.getByRole('alert')).toBeVisible();
 		expect(session.token).toBe('old-token');
 		expect(session.expired).toBe(true);
+	});
+
+	describe('with data already on the device', () => {
+		function mockSignIn(me: ReturnType<typeof user>) {
+			mockApi({
+				'POST /api/v1/auth/login': () => ({ access_token: 'new-token', token_type: 'bearer' }),
+				'GET /api/v1/users/me': () => me
+			});
+		}
+
+		it('wipes everything when a different user signs in', async () => {
+			await db.users.put(user({ id: 'user-a' }));
+			await db.trips.put(trip({ user_id: 'user-a' }));
+			await db.gearItems.put(gearItem());
+			await enqueuePatch('/api/v1/trips/trip-1', { name: 'Edited offline' }, 'Trip details');
+			await db.failed.add({
+				method: 'PATCH',
+				path: '/api/v1/trips/trip-1',
+				body: { name: 'Lost' },
+				label: 'Trip details',
+				createdAt: 1,
+				attempts: 1,
+				status: 404,
+				error: 'Not found',
+				failedAt: 2
+			});
+			await setMeta(GEAR_CATEGORIES_KEY, []);
+			const userB = user({ id: 'user-b', email: 'other@example.com' });
+			mockSignIn(userB);
+
+			const screen = await render(Page);
+			await signIn(screen);
+			await expect.poll(() => goto).toHaveBeenCalledWith('/');
+
+			expect(await db.users.toArray()).toEqual([userB]);
+			for (const table of db.tables.filter((t) => t.name !== 'users')) {
+				expect(await table.count(), table.name).toBe(0);
+			}
+			expect(session.token).toBe('new-token');
+		});
+
+		it('keeps cached data and queued edits when the same user signs back in', async () => {
+			await db.users.put(user({ id: 'user-a', first_name: 'Stale' }));
+			const cachedTrip = trip({ user_id: 'user-a' });
+			await db.trips.put(cachedTrip);
+			await enqueuePatch('/api/v1/trips/trip-1', { name: 'Edited offline' }, 'Trip details');
+			session.set('old-token');
+			session.markRejected();
+			const userA = user({ id: 'user-a', first_name: 'Fresh' });
+			mockSignIn(userA);
+
+			const screen = await render(Page);
+			await signIn(screen);
+			await expect.poll(() => goto).toHaveBeenCalledWith('/');
+
+			expect(await db.trips.toArray()).toEqual([cachedTrip]);
+			const outbox = await db.outbox.toArray();
+			expect(outbox).toHaveLength(1);
+			expect(outbox[0]).toMatchObject({
+				method: 'PATCH',
+				path: '/api/v1/trips/trip-1',
+				body: { name: 'Edited offline' }
+			});
+			expect(await db.users.toArray()).toEqual([userA]);
+			expect(session.token).toBe('new-token');
+			expect(session.expired).toBe(false);
+		});
+
+		it('keeps data when no user is cached', async () => {
+			const strayTrip = trip();
+			await db.trips.put(strayTrip);
+			mockSignIn(user({ id: 'user-b' }));
+
+			const screen = await render(Page);
+			await signIn(screen);
+			await expect.poll(() => goto).toHaveBeenCalledWith('/');
+
+			expect(await db.trips.toArray()).toEqual([strayTrip]);
+		});
 	});
 
 	it('links to registration', async () => {
