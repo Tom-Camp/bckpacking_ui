@@ -45,6 +45,46 @@ describe('login page', () => {
 		expect(session.signedIn).toBe(false);
 	});
 
+	it('signs back out and leaves cached data alone when the profile request fails', async () => {
+		const previous = user({ id: 'previous-user' });
+		await db.users.put(previous);
+		await db.outbox.add({
+			method: 'PATCH',
+			path: '/api/v1/trips/1',
+			body: { name: 'Renamed' },
+			label: 'Rename trip',
+			createdAt: 1,
+			attempts: 0
+		});
+		mockApi({
+			'POST /api/v1/auth/login': () => ({ access_token: 'jwt-token', token_type: 'bearer' }),
+			'GET /api/v1/users/me': () => respond(503, { detail: 'Service unavailable' })
+		});
+		const screen = await render(Page);
+		await signIn(screen);
+
+		await expect.element(screen.getByRole('alert')).toBeVisible();
+		expect(goto).not.toHaveBeenCalled();
+		expect(session.signedIn).toBe(false);
+		expect(await db.users.toArray()).toEqual([previous]);
+		expect(await db.outbox.count()).toBe(1);
+	});
+
+	it('keeps the previous expired session when the profile request fails', async () => {
+		session.set('old-token');
+		session.markRejected();
+		mockApi({
+			'POST /api/v1/auth/login': () => ({ access_token: 'jwt-token', token_type: 'bearer' }),
+			'GET /api/v1/users/me': () => respond(503, { detail: 'Service unavailable' })
+		});
+		const screen = await render(Page);
+		await signIn(screen);
+
+		await expect.element(screen.getByRole('alert')).toBeVisible();
+		expect(session.token).toBe('old-token');
+		expect(session.expired).toBe(true);
+	});
+
 	it('links to registration', async () => {
 		const screen = await render(Page);
 		await expect
