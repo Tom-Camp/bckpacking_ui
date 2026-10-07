@@ -4,8 +4,27 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { playwright } from '@vitest/browser-playwright';
+import { readFileSync } from 'node:fs';
 
 const API_TARGET = process.env.API_TARGET ?? 'http://localhost:8000';
+
+/**
+ * Globs (relative to .svelte-kit/output) for the zxcvbn chunk, so the service worker doesn't
+ * precache its ~800 KB: only the register page lazy-loads it, and that page falls back to the
+ * API's check without it. SvelteKit names chunks by content hash only, so the file is looked up
+ * in the client build's Vite manifest once that build has finished.
+ */
+function zxcvbnChunks(): string[] {
+	const manifestPath = new URL('.svelte-kit/output/client/.vite/manifest.json', import.meta.url);
+	const manifest: Record<string, { file: string; src?: string }> = JSON.parse(
+		readFileSync(manifestPath, 'utf-8')
+	);
+	const files = Object.values(manifest)
+		.filter((chunk) => chunk.src?.startsWith('node_modules/zxcvbn/'))
+		.map((chunk) => `client/${chunk.file}`);
+	if (files.length === 0) throw new Error('zxcvbn chunk not found in the client build manifest');
+	return files;
+}
 
 export default defineConfig({
 	plugins: [
@@ -47,6 +66,12 @@ export default defineConfig({
 				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2,webmanifest}'],
 				// API data lives in IndexedDB (Dexie), never in the service worker cache.
 				navigateFallbackDenylist: [/^\/api\//]
+			},
+			integration: {
+				// SvelteKit's client build runs as a nested build, so its output is only on disk here.
+				beforeBuildServiceWorker(options) {
+					options.workbox.globIgnores = [...(options.workbox.globIgnores ?? []), ...zxcvbnChunks()];
+				}
 			},
 			devOptions: { enabled: false }
 		})
