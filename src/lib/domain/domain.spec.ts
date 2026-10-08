@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { gearCategories, gearItem, trip, tripGear } from '$lib/test/fixtures';
 import { checklistReady, shuttleStatusFor } from './checklist';
 import { dayLabel, planByDay, tripDays } from './food';
-import { categoryOption, groupByCategory, isGearCategory } from './gear';
+import {
+	categoryOption,
+	categoryOptions,
+	FALLBACK_CATEGORIES,
+	groupByCategory,
+	isGearCategory
+} from './gear';
 import { formatDistance, formatWeight, fromInput, G_PER_OZ, toInput } from './units';
 import { summarizeWeights } from './weights';
 
@@ -134,7 +140,17 @@ describe('gear categories', () => {
 		expect(isGearCategory('kitchen', options)).toBe(false);
 	});
 
-	it('uses the item’s own label before the list is cached', () => {
+	it('falls back to the bundled list until the API’s is cached', () => {
+		// The fixture mirrors `GET /gear/categories`, so the fallback must match it value for value.
+		expect(FALLBACK_CATEGORIES).toEqual(gearCategories);
+		expect(categoryOptions(undefined)).toBe(FALLBACK_CATEGORIES);
+		expect(categoryOptions([])).toBe(FALLBACK_CATEGORIES);
+
+		const cached = [{ value: 'sleep' as const, label: 'Sleep system' }];
+		expect(categoryOptions(cached)).toBe(cached);
+	});
+
+	it('uses the item’s own label while the list is loading', () => {
 		expect(
 			categoryOption({ category: 'cooking_water', category_label: 'Cooking & Water' }, [])
 		).toEqual({ value: 'cooking_water', label: 'Cooking & Water' });

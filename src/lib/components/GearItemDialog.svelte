@@ -116,9 +116,8 @@
 				<div class="grid grid-cols-1 gap-2">
 					<Label for="gear-category">Category</Label>
 					<Select.Root type="single" bind:value={form.category}>
-						<Select.Trigger id="gear-category" class="w-full" disabled={!categoryOptions.length}>
-							{selectedCategory?.label ??
-								(categoryOptions.length ? 'Choose…' : 'Categories load on next sync')}
+						<Select.Trigger id="gear-category" class="w-full">
+							{selectedCategory?.label ?? 'Choose…'}
 						</Select.Trigger>
 						<Select.Content>
 							{#each categoryOptions as c (c.value)}
