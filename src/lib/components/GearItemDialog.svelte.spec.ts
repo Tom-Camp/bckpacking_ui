@@ -134,13 +134,20 @@ describe('GearItemDialog', () => {
 		expect(screen.getByRole('option').elements()).toHaveLength(1);
 	});
 
-	it('waits for the category list before a category can be chosen', async () => {
+	it('edits an item offline before the category list is cached', async () => {
 		await db.meta.delete(GEAR_CATEGORIES_KEY);
-		const screen = await renderApp(GearItemDialog, { open: true });
+		const item = gearItem({ name: 'Tent', category: 'shelter', weight_g: 1000 });
+		await db.gearItems.put(item);
+		const screen = await renderApp(GearItemDialog, { open: true, item }, { units: 'metric' });
 
-		await expect
-			.element(screen.getByLabelText('Category'))
-			.toHaveTextContent('Categories load on next sync');
-		await expect.element(screen.getByLabelText('Category')).toBeDisabled();
+		await expect.element(screen.getByLabelText('Category')).toHaveTextContent('Shelter');
+		await screen.getByLabelText('Weight (each)').fill('900');
+		await screen.getByRole('button', { name: 'Save' }).click();
+
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+		expect(await db.gearItems.get(item.id)).toMatchObject({ weight_g: 900 });
+		expect(await db.outbox.toArray()).toMatchObject([
+			{ path: `/api/v1/gear/${item.id}`, body: { weight_g: 900, category: 'shelter' } }
+		]);
 	});
 });
