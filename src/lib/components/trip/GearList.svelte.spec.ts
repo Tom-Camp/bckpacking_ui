@@ -138,6 +138,76 @@ describe('GearList', () => {
 		await expect.element(screen.getByPlaceholder('Search')).not.toBeInTheDocument();
 	});
 
+	it('offers to create a name that only partly matches closet items', async () => {
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
+		const dialog = screen.getByRole('dialog');
+
+		await dialog.getByPlaceholder('Search').fill('stov');
+		await expect.element(dialog.getByRole('button', { name: /^Stove/ })).toBeVisible();
+		await expect.element(dialog.getByRole('button', { name: 'Create “stov”' })).toBeVisible();
+
+		await dialog.getByPlaceholder('Search').fill(' STOVE ');
+		await expect.element(dialog.getByRole('button', { name: /^Stove/ })).toBeVisible();
+		await expect.element(dialog.getByRole('button', { name: /^Create/ })).not.toBeInTheDocument();
+	});
+
+	it('says gear is already on the trip instead of offering to create it', async () => {
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
+		const dialog = screen.getByRole('dialog');
+		await dialog.getByPlaceholder('Search').fill('tent');
+
+		await expect.element(dialog.getByText('Tent is already on this trip.')).toBeVisible();
+		await expect.element(dialog.getByRole('button', { name: /^Create/ })).not.toBeInTheDocument();
+	});
+
+	it('points to the closet for archived gear instead of offering to create it', async () => {
+		const tarp = gearItem({ name: 'Tarp', archived_at: '2026-01-01T00:00:00Z' });
+		await db.gearItems.put(tarp);
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
+		const dialog = screen.getByRole('dialog');
+		await dialog.getByPlaceholder('Search').fill('Tarp');
+
+		await expect.element(dialog.getByText(/Tarp is archived/)).toBeVisible();
+		await expect
+			.element(dialog.getByRole('link', { name: 'gear closet' }))
+			.toHaveAttribute('href', '/gear');
+		await expect.element(dialog.getByRole('button', { name: /^Create/ })).not.toBeInTheDocument();
+	});
+
+	it('clears the closet search after creating gear from it', async () => {
+		const created = gearItem({ name: 'Bear can', category: 'cooking_water', weight_g: 800 });
+		mockApi({
+			'POST /api/v1/gear': () => created,
+			'POST /api/v1/trips/trip-1/gear': () => tripGear(created)
+		});
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
+		await screen.getByPlaceholder('Search').fill('Bear can');
+		await screen.getByRole('button', { name: 'Create “Bear can”' }).click();
+		await screen.getByLabelText('Category').click();
+		await screen.getByRole('option', { name: 'Cooking & Water' }).click();
+		await screen.getByLabelText('Weight (each)').fill('800');
+		await screen.getByRole('button', { name: 'Add to closet & trip' }).click();
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
+		await expect.element(screen.getByPlaceholder('Search')).toHaveValue('');
+	});
+
+	it('clears the closet search when the dialog is closed', async () => {
+		const screen = await setup();
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
+		await screen.getByPlaceholder('Search').fill('stove');
+		await screen.getByRole('button', { name: 'Close', exact: true }).click();
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+
+		await screen.getByRole('button', { name: 'Add from closet' }).click();
+		await expect.element(screen.getByPlaceholder('Search')).toHaveValue('');
+	});
+
 	it('keeps the new closet item when adding it to the trip fails', async () => {
 		const created = gearItem({ name: 'Filter', category: 'cooking_water', weight_g: 85 });
 		mockApi({
