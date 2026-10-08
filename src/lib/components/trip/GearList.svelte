@@ -49,14 +49,34 @@
 	let search = $state('');
 	const categoryLabel = (i: GearItem) => categoryOption(i, categories.current ?? []).label;
 	const onTrip = $derived(new Set(trip.gear_list.map((l) => l.gear_item.id)));
+	const query = $derived(search.trim());
 	const available = $derived(
 		(closet.current ?? []).filter(
 			(i) =>
 				!i.archived_at &&
 				!onTrip.has(i.id) &&
-				`${i.name} ${categoryLabel(i)}`.toLowerCase().includes(search.toLowerCase())
+				`${i.name} ${categoryLabel(i)}`.toLowerCase().includes(query.toLowerCase())
 		)
 	);
+	// Closet items named exactly what was searched, including ones the list hides. Offering to
+	// create one of those would make a duplicate, so say where it is instead.
+	const exact = $derived(
+		query
+			? (closet.current ?? []).filter((i) => i.name.trim().toLowerCase() === query.toLowerCase())
+			: []
+	);
+	const hiddenMatch = $derived.by(() => {
+		if (!exact.length || exact.some((i) => available.includes(i))) return undefined;
+		const item = exact.find((i) => onTrip.has(i.id));
+		return item
+			? { item, reason: 'on-trip' as const }
+			: { item: exact[0], reason: 'archived' as const };
+	});
+
+	function setAddOpen(open: boolean) {
+		addOpen = open;
+		if (!open) search = '';
+	}
 
 	// New-gear dialog: creates the closet item, then adds it to this trip
 	let newOpen = $state(false);
@@ -64,7 +84,7 @@
 
 	function openNew(name = '') {
 		newName = name;
-		addOpen = false;
+		setAddOpen(false);
 		newOpen = true;
 	}
 
@@ -200,7 +220,7 @@
 	{/each}
 </div>
 
-<Dialog.Root bind:open={addOpen}>
+<Dialog.Root bind:open={() => addOpen, setAddOpen}>
 	<Dialog.Content class="max-h-[85svh] overflow-hidden">
 		<Dialog.Header>
 			<Dialog.Title>Add from gear closet</Dialog.Title>
@@ -229,20 +249,28 @@
 						>
 					</button>
 				</li>
-			{:else}
-				{#if search.trim()}
-					<li>
-						<button
-							class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
-							onclick={() => openNew(search.trim())}
-						>
-							<PackagePlusIcon class="size-4" /> Create “{search.trim()}”
-						</button>
-					</li>
-				{:else}
-					<li class="px-2 py-4 text-center text-sm text-muted-foreground">No more items to add.</li>
-				{/if}
 			{/each}
+			{#if hiddenMatch?.reason === 'on-trip'}
+				<li class="px-2 py-4 text-center text-sm text-muted-foreground">
+					{hiddenMatch.item.name} is already on this trip.
+				</li>
+			{:else if hiddenMatch}
+				<li class="px-2 py-4 text-center text-sm text-muted-foreground">
+					{hiddenMatch.item.name} is archived. Restore it in your
+					<a href="/gear" class="underline">gear closet</a> to add it.
+				</li>
+			{:else if query && !exact.length}
+				<li>
+					<button
+						class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
+						onclick={() => openNew(query)}
+					>
+						<PackagePlusIcon class="size-4" /> Create “{query}”
+					</button>
+				</li>
+			{:else if !available.length}
+				<li class="px-2 py-4 text-center text-sm text-muted-foreground">No more items to add.</li>
+			{/if}
 		</ul>
 	</Dialog.Content>
 </Dialog.Root>
