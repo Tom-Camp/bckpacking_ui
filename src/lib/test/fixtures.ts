@@ -79,6 +79,10 @@ export function trip(overrides: Partial<Trip> = {}): Trip {
 		},
 		gear_list: [],
 		share_token: null,
+		share_gear: false,
+		share_food: false,
+		share_checklist: false,
+		share_emergency_contact: false,
 		checklist_items: (['permit', 'shuttle_scheduled'] as const).map((item) => ({
 			id: crypto.randomUUID(),
 			item,

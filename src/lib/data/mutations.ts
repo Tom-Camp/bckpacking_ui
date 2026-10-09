@@ -183,6 +183,23 @@ export async function deleteTrip(tripId: string) {
 	});
 }
 
+/** The API mints the token, so turning sharing on needs a connection. */
+export async function shareTrip(tripId: string): Promise<string> {
+	const { share_token } = await online(() =>
+		api.POST('/api/v1/trips/{trip_id}/share', { params: { path: { trip_id: tripId } } })
+	);
+	await editTrip(tripId, (trip) => (trip.share_token = share_token));
+	return share_token;
+}
+
+/** The API keeps the section toggles when a link is revoked, so the cache does too. */
+export async function unshareTrip(tripId: string) {
+	await online(() =>
+		api.DELETE('/api/v1/trips/{trip_id}/share', { params: { path: { trip_id: tripId } } })
+	);
+	await editTrip(tripId, (trip) => (trip.share_token = null));
+}
+
 export async function addNote(tripId: string, content: string) {
 	const note = await online(() =>
 		api.POST('/api/v1/trips/{trip_id}/notes', {

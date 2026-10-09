@@ -24,6 +24,15 @@ export const api = createClient<paths>({
 	fetch: (request) => authedFetch(request)
 });
 
+/**
+ * Client for unauthenticated routes only (share links). It never sends the session's token, and
+ * its 401s don't touch the session, so a signed-in viewer's account stays out of the request.
+ */
+export const publicApi = createClient<paths>({
+	baseUrl: origin(),
+	fetch: (request) => fetch(request)
+});
+
 export class ApiError extends Error {
 	constructor(
 		public status: number,

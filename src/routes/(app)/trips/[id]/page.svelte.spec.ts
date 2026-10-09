@@ -54,6 +54,20 @@ describe('trip page', () => {
 		expect((await db.outbox.toArray())[0]).toMatchObject({ path: '/api/v1/trips/trip-1' });
 	});
 
+	it('opens the share dialog from the header and shows the new link', async () => {
+		await db.trips.put(trip());
+		mockApi({ 'POST /api/v1/trips/trip-1/share': () => ({ share_token: 'tok' }) });
+		const screen = await renderApp(Page);
+
+		await screen.getByRole('button', { name: 'Share' }).click();
+		await expect.element(screen.getByRole('heading', { name: 'Share trip' })).toBeVisible();
+		await screen.getByRole('button', { name: 'Create link' }).click();
+
+		await expect
+			.element(screen.getByLabelText('Share link'))
+			.toHaveValue(`${location.origin}/shared#tok`);
+	});
+
 	it('deletes the trip after confirmation and returns to the list', async () => {
 		await db.trips.put(trip());
 		mockApi({ 'DELETE /api/v1/trips/trip-1': () => respond(204) });
