@@ -37,6 +37,13 @@ export type TripFoodCreate = Schemas['TripFoodCreate'];
 export type TripFoodUpdate = Schemas['TripFoodUpdate'];
 export type Meal = Schemas['Meal'];
 
+// What a share link exposes: no ids, timestamps or private fields.
+export type SharedTrip = Schemas['SharedTripRead'];
+export type SharedTripGear = Schemas['SharedTripGearRead'];
+export type SharedChecklistItem = Schemas['SharedChecklistItemRead'];
+export type SharedFoodPlan = Schemas['SharedFoodPlannerRead'];
+export type SharedTripFood = Schemas['SharedTripFoodRead'];
+
 export const TRIP_TYPES: TripType[] = ['loop', 'out-and-back', 'point-to-point'];
 export const GEAR_KINDS: GearKind[] = ['base', 'worn', 'consumable'];
 export const MEALS: Meal[] = ['breakfast', 'lunch', 'dinner', 'snack'];

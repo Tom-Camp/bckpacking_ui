@@ -1,4 +1,4 @@
-import type { FoodPlan, Meal, Trip, TripFood } from '$lib/api/types';
+import type { Meal, Trip, TripFood } from '$lib/api/types';
 import { MEALS } from '$lib/api/types';
 
 /** Parses an API date ("2026-08-26") as a local calendar date, avoiding UTC day shifts. */
@@ -38,18 +38,24 @@ export function dayLabel(day: number, startDate: string | null): string {
 	return `Day ${day} (${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})`;
 }
 
-export interface DayPlan {
+/** The food fields `planByDay` reads, so the owner's plans and shared plans both fit. */
+export type PlannedFood = Pick<
+	TripFood,
+	'day' | 'meal_type' | 'name' | 'servings' | 'kcal' | 'weight_g'
+>;
+
+export interface DayPlan<F extends PlannedFood = TripFood> {
 	day: number;
-	meals: { meal: Meal; items: TripFood[] }[];
+	meals: { meal: Meal; items: F[] }[];
 	kcal: number;
 	weight_g: number;
 }
 
 /** Groups food by day and meal, covering every trip day even if it has no food yet. */
-export function planByDay(
+export function planByDay<F extends PlannedFood>(
 	trip: Pick<Trip, 'start_date' | 'end_date'>,
-	plan: FoodPlan | null
-): DayPlan[] {
+	plan: { food: F[] } | null
+): DayPlan<F>[] {
 	const food = plan?.food ?? [];
 	const lastFoodDay = food.reduce((max, f) => Math.max(max, f.day), 0);
 	const days = Math.max(tripDays(trip) ?? 0, lastFoodDay, 1);

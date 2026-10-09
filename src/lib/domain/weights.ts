@@ -1,4 +1,4 @@
-import type { Trip, TripGear } from '$lib/api/types';
+import type { GearItem, Trip, TripFood, TripGear } from '$lib/api/types';
 
 export interface WeightSummary {
 	/** Carried gear that isn't consumed: the classic "base weight". */
@@ -17,14 +17,20 @@ export interface WeightSummary {
 	body_pct: number | null;
 }
 
-export function gearLineWeight(line: Pick<TripGear, 'quantity' | 'gear_item'>): number {
+export function gearLineWeight(
+	line: Pick<TripGear, 'quantity'> & { gear_item: Pick<GearItem, 'weight_g'> }
+): number {
 	return line.gear_item.weight_g * line.quantity;
 }
 
-export function summarizeWeights(
-	trip: Pick<Trip, 'gear_list' | 'food_plan' | 'water_carry_l'>,
-	bodyWeightG?: number | null
-): WeightSummary {
+/** The fields `summarizeWeights` reads, so the owner's trips and shared trips both fit. */
+export interface WeighableTrip {
+	gear_list: (Pick<TripGear, 'quantity'> & { gear_item: Pick<GearItem, 'weight_g' | 'kind'> })[];
+	food_plan: { food: Pick<TripFood, 'servings' | 'weight_g'>[] } | null;
+	water_carry_l: Trip['water_carry_l'];
+}
+
+export function summarizeWeights(trip: WeighableTrip, bodyWeightG?: number | null): WeightSummary {
 	let base_g = 0;
 	let worn_g = 0;
 	let consumable_g = 0;

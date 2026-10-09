@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import type {
+	SharedChecklistItem,
+	SharedFoodPlan,
+	SharedTripFood,
+	SharedTripGear
+} from '$lib/api/types';
 import { gearCategories, gearItem, trip, tripGear } from '$lib/test/fixtures';
-import { checklistReady, shuttleStatusFor } from './checklist';
+import { checklistReady, shuttleStatusFor, sortChecklist } from './checklist';
 import { dayLabel, planByDay, tripDays } from './food';
 import {
 	categoryOption,
@@ -74,6 +80,56 @@ describe('weights', () => {
 
 	it('omits body weight % when body weight is unknown', () => {
 		expect(summarizeWeights(trip(), null).body_pct).toBeNull();
+	});
+});
+
+describe('shared trip shapes', () => {
+	// Share links return trips without ids, timestamps or private fields.
+	const oats: SharedTripFood = {
+		day: 2,
+		name: 'Oats',
+		meal_type: 'breakfast',
+		servings: 2,
+		weight_g: 100,
+		kcal: 400
+	};
+	const plan: SharedFoodPlan = {
+		target_kcal_per_day: 2700,
+		target_food_g_per_day: 794,
+		food: [oats]
+	};
+
+	it('summarizes weights', () => {
+		const gear_list: SharedTripGear[] = [
+			{
+				gear_item: {
+					name: 'Tent',
+					category: 'shelter',
+					category_label: 'Shelter',
+					weight_g: 1000,
+					kind: 'base'
+				},
+				quantity: 2,
+				packed: false
+			}
+		];
+		const w = summarizeWeights({ gear_list, food_plan: plan, water_carry_l: 1 });
+		expect(w.base_g).toBe(2000);
+		expect(w.pack_g).toBe(3200);
+	});
+
+	it('plans food by day', () => {
+		const days = planByDay({ start_date: null, end_date: null }, plan);
+		expect(days.map((d) => d.kcal)).toEqual([0, 800]);
+		expect(days[1].meals[0].items).toEqual([oats]);
+	});
+
+	it('sorts checklist items', () => {
+		const items: SharedChecklistItem[] = [
+			{ item: 'shuttle_scheduled', status: 'todo' },
+			{ item: 'permit', status: 'done' }
+		];
+		expect(sortChecklist(items).map((i) => i.item)).toEqual(['permit', 'shuttle_scheduled']);
 	});
 });
 

@@ -6,6 +6,8 @@ vi.mock('$lib/sync/engine', () => ({ sync: vi.fn() }));
 const { db, clearLocalData, GEAR_CATEGORIES_KEY, setMeta } = await import('./db');
 const m = await import('./mutations');
 const { gearCategories, gearItem, trip, tripGear } = await import('$lib/test/fixtures');
+const { mockApi, respond } = await import('$lib/test/api');
+const { OfflineError } = await import('$lib/api/client');
 
 beforeEach(async () => {
 	await clearLocalData();
@@ -80,6 +82,34 @@ describe('online-only actions', () => {
 	it('refuse to run offline', async () => {
 		vi.stubGlobal('navigator', { onLine: false });
 		await expect(m.addNote('trip-1', 'hello')).rejects.toThrow(/connection/);
+		await expect(m.shareTrip('trip-1')).rejects.toBeInstanceOf(OfflineError);
+		await expect(m.unshareTrip('trip-1')).rejects.toBeInstanceOf(OfflineError);
+		vi.unstubAllGlobals();
+	});
+
+	it('save the share token from the API and clear it when sharing stops', async () => {
+		vi.stubGlobal('navigator', { onLine: true });
+		await db.trips.put(trip({ share_gear: true, share_emergency_contact: true }));
+		const requests = mockApi({
+			'POST /api/v1/trips/trip-1/share': () => ({ share_token: 'tok' }),
+			'DELETE /api/v1/trips/trip-1/share': () => respond(204)
+		});
+
+		expect(await m.shareTrip('trip-1')).toBe('tok');
+		expect((await db.trips.get('trip-1'))?.share_token).toBe('tok');
+
+		await m.unshareTrip('trip-1');
+		expect(await db.trips.get('trip-1')).toMatchObject({
+			share_token: null,
+			share_gear: true,
+			share_food: false,
+			share_checklist: false,
+			share_emergency_contact: true
+		});
+		expect(requests.map((r) => r.route)).toEqual([
+			'POST /api/v1/trips/trip-1/share',
+			'DELETE /api/v1/trips/trip-1/share'
+		]);
 		vi.unstubAllGlobals();
 	});
 });

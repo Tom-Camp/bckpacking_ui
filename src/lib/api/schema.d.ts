@@ -470,7 +470,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/shared/trips/{share_token}": {
+    "/api/v1/shared/trip": {
         parameters: {
             query?: never;
             header?: never;
@@ -478,7 +478,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get Shared Trip */
-        get: operations["get_shared_trip_api_v1_shared_trips__share_token__get"];
+        get: operations["get_shared_trip_api_v1_shared_trip_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -658,6 +658,23 @@ export interface components {
             role: components["schemas"]["UserRole"];
         };
         /**
+         * SharedChecklistItemRead
+         * @description Item and status only: details are free text that may hold personal info.
+         */
+        SharedChecklistItemRead: {
+            item: components["schemas"]["ChecklistItemKey"];
+            status: components["schemas"]["ChecklistStatus"];
+        };
+        /** SharedFoodPlannerRead */
+        SharedFoodPlannerRead: {
+            /** Target Kcal Per Day */
+            target_kcal_per_day: number;
+            /** Target Food G Per Day */
+            target_food_g_per_day: number;
+            /** Food */
+            food: components["schemas"]["SharedTripFoodRead"][];
+        };
+        /**
          * SharedGearItemRead
          * @description A closet item as seen through a share link: no private notes or archive state.
          */
@@ -668,14 +685,25 @@ export interface components {
             /** Weight G */
             weight_g: number;
             kind: components["schemas"]["GearKind"];
+            /** Category Label */
+            readonly category_label: string;
+        };
+        /** SharedTripFoodRead */
+        SharedTripFoodRead: {
+            /** Day */
+            day: number;
+            /** Name */
+            name: string;
+            meal_type: components["schemas"]["Meal"];
+            /** Servings */
+            servings: number;
+            /** Weight G */
+            weight_g: number;
+            /** Kcal */
+            kcal: number;
         };
         /** SharedTripGearRead */
         SharedTripGearRead: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
             gear_item: components["schemas"]["SharedGearItemRead"];
             /** Quantity */
             quantity: number;
@@ -689,17 +717,13 @@ export interface components {
         };
         /**
          * SharedTripRead
-         * @description Public read-only view of a shared trip.
+         * @description Public read-only view of a shared trip; build it with from_trip(), which applies the owner's toggles.
          *
-         *     A separate allowlist rather than TripRead minus fields, so new Trip columns stay private by default.
-         *     Omits user_id, emergency_contact, notes, and the share token itself.
+         *     Core details are always present. Each optional section is always present as a key: null when the owner
+         *     hasn't shared it, and [] when it's shared but empty. Section fields deliberately have no default, so the
+         *     OpenAPI schema marks them required and the UI's generated type keeps the key non-optional.
          */
         SharedTripRead: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
             /** Name */
             name: string;
             /** Description */
@@ -723,27 +747,19 @@ export interface components {
             water_carry_l: number;
             /** Map Link */
             map_link: string | null;
-            food_plan: components["schemas"]["FoodPlannerRead"] | null;
-            /** Checklist Items */
-            checklist_items: components["schemas"]["ChecklistItemRead"][];
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
             owner: components["schemas"]["SharedTripOwnerRead"];
             /** Gear List */
-            gear_list: components["schemas"]["SharedTripGearRead"][];
+            gear_list: components["schemas"]["SharedTripGearRead"][] | null;
+            food_plan: components["schemas"]["SharedFoodPlannerRead"] | null;
+            /** Checklist Items */
+            checklist_items: components["schemas"]["SharedChecklistItemRead"][] | null;
+            /** Emergency Contact */
+            emergency_contact: string | null;
             /**
              * Checklist Ready
-             * @description True when no checklist item is still to do (done and not-applicable both count).
+             * @description Follows the checklist toggle: null when the checklist isn't shared.
              */
-            readonly checklist_ready: boolean;
+            readonly checklist_ready: boolean | null;
         };
         /** TokenResponse */
         TokenResponse: {
@@ -997,10 +1013,15 @@ export interface components {
             notes: components["schemas"]["TripNoteRead"][];
             /** Share Token */
             share_token: string | null;
-            /**
-             * Checklist Ready
-             * @description True when no checklist item is still to do (done and not-applicable both count).
-             */
+            /** Share Gear */
+            share_gear: boolean;
+            /** Share Food */
+            share_food: boolean;
+            /** Share Checklist */
+            share_checklist: boolean;
+            /** Share Emergency Contact */
+            share_emergency_contact: boolean;
+            /** Checklist Ready */
             readonly checklist_ready: boolean;
         };
         /** TripShareRead */
@@ -1040,6 +1061,14 @@ export interface components {
             map_link?: string | null;
             /** Emergency Contact */
             emergency_contact?: string | null;
+            /** Share Gear */
+            share_gear?: boolean;
+            /** Share Food */
+            share_food?: boolean;
+            /** Share Checklist */
+            share_checklist?: boolean;
+            /** Share Emergency Contact */
+            share_emergency_contact?: boolean;
         };
         /**
          * Unit
@@ -2350,13 +2379,13 @@ export interface operations {
             };
         };
     };
-    get_shared_trip_api_v1_shared_trips__share_token__get: {
+    get_shared_trip_api_v1_shared_trip_get: {
         parameters: {
             query?: never;
-            header?: never;
-            path: {
-                share_token: string;
+            header?: {
+                "X-Share-Token"?: string | null;
             };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
