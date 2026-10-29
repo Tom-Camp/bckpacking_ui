@@ -2,7 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { register } from '$lib/auth/actions';
 	import {
-		MAX_PASSWORD_BYTES,
+		isTooLong,
+		TOO_LONG_MESSAGE,
 		type PasswordStrength as Strength
 	} from '$lib/auth/password-strength';
 	import FormError from '$lib/components/FormError.svelte';
@@ -29,8 +30,8 @@
 			return;
 		}
 		// zxcvbn may not have loaded (e.g. offline); still catch what bcrypt can't take.
-		if (new TextEncoder().encode(form.password).length > MAX_PASSWORD_BYTES) {
-			error = `Password is too long (${MAX_PASSWORD_BYTES} bytes max).`;
+		if (isTooLong(form.password)) {
+			error = TOO_LONG_MESSAGE;
 			return;
 		}
 		busy = true;

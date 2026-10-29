@@ -7,6 +7,7 @@
 
 import { api, call, OfflineError } from '$lib/api/client';
 import type {
+	ChangePasswordRequest,
 	ChecklistItemKey,
 	ChecklistItemUpdate,
 	FoodPlanUpdate,
@@ -297,4 +298,9 @@ export async function updateProfile(body: UserUpdate) {
 	const user = await online(() => api.PATCH('/api/v1/users/me', { body }));
 	await db.users.put(user);
 	return user;
+}
+
+/** Nothing about the password is cached, so there's nothing to write locally. */
+export async function changePassword(body: ChangePasswordRequest) {
+	await online(() => api.POST('/api/v1/users/me/password', { body }));
 }
