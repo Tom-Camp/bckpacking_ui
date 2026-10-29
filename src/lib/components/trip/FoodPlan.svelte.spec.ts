@@ -36,7 +36,7 @@ describe('FoodPlan', () => {
 			await expect.element(screen.getByText(day)).toBeVisible();
 		await expect.element(screen.getByText('400 / 2,700 kcal')).toBeVisible();
 		await expect.element(screen.getByText('760 / 2,700 kcal')).toBeVisible();
-		await expect.element(screen.getByText('Ramen')).toBeVisible();
+		await expect.element(screen.getByText(/Ramen/)).toBeVisible();
 		await expect.element(screen.getByText('× 2')).toBeVisible();
 		await expect.element(screen.getByText('760 kcal · 170 g')).toBeVisible();
 	});

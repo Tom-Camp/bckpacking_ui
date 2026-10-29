@@ -37,10 +37,10 @@ describe('gear closet page', () => {
 		await expect.element(headings.first()).toHaveTextContent('Cooking & Water');
 		await expect.element(headings.nth(1)).toHaveTextContent('Shelter');
 		await expect.element(screen.getByText('85 g')).toBeVisible();
-		await expect.element(screen.getByText('Old tarp')).not.toBeInTheDocument();
+		await expect.element(screen.getByText(/Old tarp/)).not.toBeInTheDocument();
 
 		await screen.getByLabelText('Show archived').click();
-		await expect.element(screen.getByText('Old tarp')).toBeVisible();
+		await expect.element(screen.getByText(/Old tarp/)).toBeVisible();
 		await expect.element(screen.getByRole('button', { name: 'Restore Old tarp' })).toBeVisible();
 	});
 

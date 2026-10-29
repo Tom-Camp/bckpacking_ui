@@ -78,7 +78,9 @@ describe('GearItemDialog', () => {
 		await db.trips.put(trip({ gear_list: [tripGear(item)] }));
 		const screen = await renderApp(GearItemDialog, { open: true, item }, { units: 'metric' });
 
-		await expect.element(screen.getByText('Changes apply to every trip')).toBeVisible();
+		await expect
+			.element(screen.getByText('Changes apply to every trip that uses this item.'))
+			.toBeVisible();
 		await expect.element(screen.getByLabelText('Name')).toHaveValue('Tent');
 		await screen.getByLabelText('Name').fill('Tarp');
 		await screen.getByLabelText('Weight (each)').fill('400');

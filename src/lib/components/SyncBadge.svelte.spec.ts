@@ -57,7 +57,7 @@ describe('SyncBadge', () => {
 		await badge(screen).click();
 
 		await expect.element(screen.getByText('Couldn’t sync')).toBeVisible();
-		await expect.element(screen.getByText(': Note not found')).toBeVisible();
+		await expect.element(screen.getByText('Note: Note not found')).toBeVisible();
 		await screen.getByRole('button', { name: 'Dismiss' }).click();
 		await expect.element(screen.getByText('Couldn’t sync')).not.toBeInTheDocument();
 		expect(await db.failed.count()).toBe(0);

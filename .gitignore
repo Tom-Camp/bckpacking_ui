@@ -26,4 +26,5 @@ test-results
 
 # Vitest browser mode artifacts
 __screenshots__
+.vitest
 .vitest-attachments

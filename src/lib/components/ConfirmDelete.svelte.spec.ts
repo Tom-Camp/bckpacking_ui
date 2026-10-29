@@ -23,7 +23,7 @@ describe('ConfirmDelete', () => {
 		const onconfirm = vi.fn(async () => {});
 		const screen = await setup(onconfirm);
 
-		await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Delete Tent?');
+		await expect.element(screen.getByRole('alertdialog')).toMatchTextContent('Delete Tent?');
 		await expect.element(screen.getByText('It stays in your gear closet.')).toBeVisible();
 		expect(onconfirm).not.toHaveBeenCalled();
 
