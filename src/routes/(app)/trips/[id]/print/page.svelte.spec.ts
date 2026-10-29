@@ -45,7 +45,7 @@ describe('print page', () => {
 		await expect.element(screen.getByText(/Permit\s*\(Done\)\s*: Picked up/)).toBeVisible();
 		await expect.element(screen.getByText(/Pack 3.26 kg/)).toBeVisible();
 		await expect.element(screen.getByText(/Stakes ×6/)).toBeVisible();
-		await expect.element(screen.getByText('Oatmeal ×2')).toBeVisible();
+		await expect.element(screen.getByText(/Oatmeal ×2/)).toBeVisible();
 		await expect.element(screen.getByText('Water at mile 4')).toBeVisible();
 		await expect
 			.element(screen.getByRole('link', { name: 'Back' }))

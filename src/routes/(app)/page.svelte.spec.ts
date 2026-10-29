@@ -27,11 +27,11 @@ describe('trips page', () => {
 		const screen = await renderApp(Page, {}, { units: 'metric' });
 
 		const cards = screen.getByRole('link', { name: /Art Loeb|Linville Gorge/ });
-		await expect.element(cards.first()).toHaveTextContent('Linville Gorge');
+		await expect.element(cards.first()).toMatchTextContent('Linville Gorge');
 		await expect.element(cards.first()).toHaveAttribute('href', '/trips/trip-2');
-		await expect.element(cards.first()).toHaveTextContent(/Loop.*Ready.*Pack 1 kg/);
-		await expect.element(cards.nth(1)).toHaveTextContent(/Pisgah.*Aug 26 – Aug 28, 2026/);
-		await expect.element(cards.nth(1)).toHaveTextContent(/Point to point.*2 to do/);
+		await expect.element(cards.first()).toMatchTextContent(/Loop.*Ready.*Pack 1 kg/);
+		await expect.element(cards.nth(1)).toMatchTextContent(/Pisgah.*Aug 26 – Aug 28, 2026/);
+		await expect.element(cards.nth(1)).toMatchTextContent(/Point to point.*2 to do/);
 	});
 
 	it('cannot start a new trip offline', async () => {

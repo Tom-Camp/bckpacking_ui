@@ -35,7 +35,7 @@ describe('GearList', () => {
 			'Shelter 1.06 kg'
 		]);
 		await expect.element(screen.getByText('worn, not in pack weight')).toBeVisible();
-		await expect.element(screen.getByTestId('gear-Stakes')).toHaveTextContent(/6.*60 g/);
+		await expect.element(screen.getByTestId('gear-Stakes')).toMatchTextContent(/6.*60 g/);
 	});
 
 	it('points to the closet when the list is empty', async () => {

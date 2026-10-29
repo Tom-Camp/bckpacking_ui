@@ -101,7 +101,7 @@ describe('shared trip page', () => {
 		await expect.element(screen.getByText('Shared by hiker')).toBeVisible();
 		await expect.element(screen.getByText('Davidson River')).toBeVisible();
 		await expect.element(screen.getByText('Ridge walk')).toBeVisible();
-		for (const name of ['Emergency contact', 'Checklist', 'Gear', 'Food'])
+		for (const name of ['Emergency contact', /^Checklist/, 'Gear', 'Food'])
 			await expect.element(screen.getByRole('heading', { name })).not.toBeInTheDocument();
 		expect(await db.trips.count()).toBe(0);
 	});
@@ -112,11 +112,11 @@ describe('shared trip page', () => {
 		await expect.element(screen.getByText('Sam 555-0100')).toBeVisible();
 		await expect.element(screen.getByRole('heading', { name: 'Shelter' })).toBeVisible();
 		await expect.element(screen.getByRole('heading', { name: 'Clothing' })).toBeVisible();
-		await expect.element(screen.getByText('Rain jacket')).toBeVisible();
+		await expect.element(screen.getByText('Rain jacket (worn)')).toBeVisible();
 		await expect.element(screen.getByText(/Base 2\.2 lb/)).toBeVisible();
 		await expect.element(screen.getByText(/Worn 10\.6 oz/)).toBeVisible();
 		await expect.element(screen.getByRole('heading', { name: /^Day 1/ })).toBeVisible();
-		await expect.element(screen.getByText('Oats')).toBeVisible();
+		await expect.element(screen.getByText('Breakfast: Oats')).toBeVisible();
 		await expect
 			.element(screen.getByRole('heading', { name: /Checklist · 1 to do/ }))
 			.toBeVisible();

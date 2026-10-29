@@ -66,7 +66,7 @@ describe('settings page', () => {
 
 		await expect
 			.element(screen.getByRole('alert'))
-			.toHaveTextContent('2 change(s) haven’t synced yet');
+			.toMatchTextContent('2 change(s) haven’t synced yet');
 		expect(goto).not.toHaveBeenCalled();
 
 		await screen.getByRole('button', { name: 'Sign out' }).click();
