@@ -15,6 +15,7 @@ import {
 	groupByCategory,
 	isGearCategory
 } from './gear';
+import { safeHttpUrl } from './trip';
 import { formatDistance, formatWeight, fromInput, G_PER_OZ, toInput } from './units';
 import { summarizeWeights } from './weights';
 
@@ -228,5 +229,32 @@ describe('gear categories', () => {
 			['Cooking & Water', ['Stove']],
 			['Shelter', ['Tent', 'Bivy']]
 		]);
+	});
+});
+
+describe('safeHttpUrl', () => {
+	it('keeps absolute http(s) URLs', () => {
+		for (const url of [
+			'https://caltopo.com/m/abc',
+			'http://example.com/map',
+			'HTTPS://Example.com'
+		])
+			expect(safeHttpUrl(url)).toBe(url);
+	});
+
+	it('rejects other schemes, relative paths and garbage', () => {
+		for (const url of [
+			'javascript:alert(1)',
+			'JavaScript:alert(1)',
+			' javascript:alert(1)',
+			'data:text/html,<script>alert(1)</script>',
+			'ftp://example.com/map',
+			'/trips/1',
+			'example.com/map',
+			'not a url',
+			'',
+			null
+		])
+			expect(safeHttpUrl(url)).toBeNull();
 	});
 });

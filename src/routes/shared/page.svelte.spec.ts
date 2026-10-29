@@ -125,6 +125,21 @@ describe('shared trip page', () => {
 		expect(await db.trips.count()).toBe(0);
 	});
 
+	it('links an http(s) map link', async () => {
+		const { screen } = await renderShared(sharedTrip({ map_link: 'https://caltopo.com/m/abc' }));
+
+		await expect
+			.element(screen.getByRole('link', { name: 'Open map' }))
+			.toHaveAttribute('href', 'https://caltopo.com/m/abc');
+	});
+
+	it('shows a map link that isn’t http(s) as text, not a link', async () => {
+		const { screen } = await renderShared(sharedTrip({ map_link: 'javascript:alert(1)' }));
+
+		await expect.element(screen.getByText('javascript:alert(1)')).toBeVisible();
+		await expect.element(screen.getByRole('link', { name: 'Open map' })).not.toBeInTheDocument();
+	});
+
 	it('says when a shared section is empty', async () => {
 		const { screen } = await renderShared(
 			sharedTrip({ gear_list: [], checklist_items: [], checklist_ready: true })
