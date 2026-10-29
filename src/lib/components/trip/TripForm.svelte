@@ -50,6 +50,11 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		const name = form.name.trim();
+		if (!name) {
+			error = "Name can't be blank.";
+			return;
+		}
 		if (form.start_date && form.end_date && form.end_date < form.start_date) {
 			error = 'End date must be on or after the start date.';
 			return;
@@ -64,7 +69,7 @@
 		error = null;
 		try {
 			await onsubmit({
-				name: form.name.trim(),
+				name,
 				description: blank(form.description),
 				area: blank(form.area),
 				trip_type: form.trip_type,

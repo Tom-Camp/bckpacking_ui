@@ -55,6 +55,26 @@ describe('FoodPlan', () => {
 		expect(queued.body).toEqual({ target_kcal_per_day: 3000, target_food_g_per_day: 900 });
 	});
 
+	it('keeps the calorie target when the field is cleared', async () => {
+		const screen = await setup();
+		await screen.getByLabelText('Calories per day').fill('');
+		await userEvent.tab();
+
+		await expect.element(screen.getByLabelText('Calories per day')).toHaveValue(2700);
+		expect((await db.trips.get('trip-1'))?.food_plan?.target_kcal_per_day).toBe(2700);
+		expect(await db.outbox.count()).toBe(0);
+	});
+
+	it('rounds the calorie target to a whole number', async () => {
+		const screen = await setup();
+		await screen.getByLabelText('Calories per day').fill('3000.4');
+		await userEvent.tab();
+
+		await expect.element(screen.getByLabelText('Calories per day')).toHaveValue(3000);
+		const [queued] = await db.outbox.toArray();
+		expect(queued.body).toEqual({ target_kcal_per_day: 3000 });
+	});
+
 	it('opens the add dialog preset to the day and meal', async () => {
 		const screen = await setup();
 		await screen.getByRole('button', { name: 'Add Lunch' }).nth(1).click();
