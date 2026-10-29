@@ -257,4 +257,18 @@ describe('safeHttpUrl', () => {
 		])
 			expect(safeHttpUrl(url)).toBeNull();
 	});
+
+	// `URL` reads each of these as https://example.com/, but the API finds no host and returns 422.
+	it('rejects links without // before the host', () => {
+		for (const url of [
+			'https:example.com',
+			'https:/example.com',
+			'https:///example.com',
+			'http:\\\\example.com',
+			'https:/\\example.com',
+			'https://\t/example.com',
+			'https://\n/example.com'
+		])
+			expect(safeHttpUrl(url)).toBeNull();
+	});
 });
