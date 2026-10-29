@@ -21,14 +21,15 @@ export function loadZxcvbn(): Promise<Zxcvbn> {
 	return loading;
 }
 
+export const TOO_LONG_MESSAGE = `Password is too long (${MAX_PASSWORD_BYTES} bytes max).`;
+
+/** What bcrypt can't take. Needs no zxcvbn, so forms check it even when that hasn't loaded. */
+export function isTooLong(password: string): boolean {
+	return new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES;
+}
+
 export function evaluate(zxcvbn: Zxcvbn, password: string): PasswordStrength {
-	if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) {
-		return {
-			score: 0,
-			ok: false,
-			message: `Password is too long (${MAX_PASSWORD_BYTES} bytes max).`
-		};
-	}
+	if (isTooLong(password)) return { score: 0, ok: false, message: TOO_LONG_MESSAGE };
 	const { score, feedback } = zxcvbn(password);
 	if (score >= MIN_SCORE) return { score, ok: true, message: null };
 	const message = feedback.warning || feedback.suggestions[0] || 'Password is too weak';

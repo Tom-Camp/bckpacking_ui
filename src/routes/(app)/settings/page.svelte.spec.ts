@@ -1,12 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { toast } from 'svelte-sonner';
+import { describe, expect, it, vi } from 'vitest';
 import { goto } from '$app/navigation';
 import { session } from '$lib/auth/session.svelte';
 import { db } from '$lib/data/db';
 import { syncStatus } from '$lib/sync/status.svelte';
-import { mockApi } from '$lib/test/api';
+import { mockApi, respond } from '$lib/test/api';
 import { trip, user } from '$lib/test/fixtures';
 import { renderApp } from '$lib/test/render';
 import Page from './+page.svelte';
+
+vi.mock('svelte-sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+const PASSWORD_ROUTE = 'POST /api/v1/users/me/password';
+const STRONG = 'lantern-ridge-trail-mix-42';
+
+type Screen = Awaited<ReturnType<typeof renderApp>>;
+
+async function fillPasswords(screen: Screen, next = STRONG, confirm = next) {
+	await screen.getByLabelText('Current password').fill('old-pass');
+	await screen.getByLabelText('New password').fill(next);
+	await screen.getByLabelText('Confirm new password').fill(confirm);
+}
 
 const me = user({
 	username: 'hiker',
@@ -46,6 +60,81 @@ describe('settings page', () => {
 			});
 		expect((requests[0].body as { body_weight_g: number }).body_weight_g).toBeCloseTo(72_500, -2);
 		await expect.poll(async () => (await db.users.get(me.id))?.last_name).toBe('Ridge');
+	});
+
+	it('leaves the password fields alone when saving the profile', async () => {
+		const requests = mockApi({ 'PATCH /api/v1/users/me': () => me });
+		const screen = await renderApp(Page, {}, { user: me });
+		await fillPasswords(screen);
+		await screen.getByRole('button', { name: 'Save' }).click();
+
+		await expect.poll(() => toast.success).toHaveBeenCalledWith('Profile saved');
+		expect(requests.map((r) => r.route)).toEqual(['PATCH /api/v1/users/me']);
+		await expect.element(screen.getByLabelText('New password')).toHaveValue(STRONG);
+	});
+
+	it('changes the password and clears the form', async () => {
+		session.set('jwt-token');
+		const requests = mockApi({ [PASSWORD_ROUTE]: () => respond(204) });
+		const screen = await renderApp(Page, {}, { user: me });
+		await fillPasswords(screen);
+		await screen.getByRole('button', { name: 'Change password' }).click();
+
+		await expect.poll(() => toast.success).toHaveBeenCalledWith('Password changed');
+		expect(requests[0].body).toEqual({ current_password: 'old-pass', new_password: STRONG });
+		for (const label of ['Current password', 'New password', 'Confirm new password'])
+			await expect.element(screen.getByLabelText(label)).toHaveValue('');
+		expect(session.signedIn).toBe(true);
+	});
+
+	it('shows a wrong current password without asking to sign in again', async () => {
+		session.set('jwt-token');
+		mockApi({
+			[PASSWORD_ROUTE]: () => respond(400, { detail: 'Current password is incorrect' })
+		});
+		const screen = await renderApp(Page, {}, { user: me });
+		await fillPasswords(screen);
+		await screen.getByRole('button', { name: 'Change password' }).click();
+
+		await expect
+			.element(screen.getByRole('alert'))
+			.toHaveTextContent('Current password is incorrect');
+		expect(session.rejected).toBe(false);
+		expect(session.expired).toBe(false);
+		expect(goto).not.toHaveBeenCalled();
+	});
+
+	it('shows the API’s reason for rejecting the new password', async () => {
+		mockApi({
+			[PASSWORD_ROUTE]: () =>
+				respond(422, {
+					detail: [{ loc: ['body', 'new_password'], msg: 'Password is too weak' }]
+				})
+		});
+		const screen = await renderApp(Page, {}, { user: me });
+		await fillPasswords(screen);
+		await screen.getByRole('button', { name: 'Change password' }).click();
+
+		await expect
+			.element(screen.getByRole('alert'))
+			.toHaveTextContent('new_password: Password is too weak');
+	});
+
+	it('won’t send a new password that doesn’t match its confirmation', async () => {
+		const requests = mockApi({ [PASSWORD_ROUTE]: () => respond(204) });
+		const screen = await renderApp(Page, {}, { user: me });
+		await fillPasswords(screen, STRONG, `${STRONG}!`);
+		await screen.getByRole('button', { name: 'Change password' }).click();
+
+		await expect.element(screen.getByRole('alert')).toHaveTextContent('New passwords don’t match.');
+		expect(requests).toEqual([]);
+	});
+
+	it('needs a connection to change the password', async () => {
+		syncStatus.online = false;
+		const screen = await renderApp(Page, {}, { user: me });
+
+		await expect.element(screen.getByRole('button', { name: 'Change password' })).toBeDisabled();
 	});
 
 	it('signs out, wiping this device', async () => {

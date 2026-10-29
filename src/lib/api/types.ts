@@ -5,6 +5,7 @@ type Schemas = components['schemas'];
 export type User = Schemas['UserRead'];
 export type UserUpdate = Schemas['UserUpdate'];
 export type UserCreate = Schemas['UserCreate'];
+export type ChangePasswordRequest = Schemas['ChangePasswordRequest'];
 export type Unit = Schemas['Unit'];
 
 export type Trip = Schemas['TripRead'];
