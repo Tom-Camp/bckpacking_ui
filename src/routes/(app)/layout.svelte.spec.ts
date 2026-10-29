@@ -9,6 +9,7 @@ import { startSync } from '$lib/sync/engine';
 import { syncStatus } from '$lib/sync/status.svelte';
 import { user } from '$lib/test/fixtures';
 import InLayout from '$lib/test/InLayout.svelte';
+import { setOnline } from '$lib/test/online';
 import { setRoute } from '$lib/test/route';
 import UnitsProbe from '$lib/test/UnitsProbe.svelte';
 import Layout from './+layout.svelte';
@@ -44,11 +45,11 @@ describe('app layout', () => {
 
 	it('explains offline mode and an expired session', async () => {
 		session.set('jwt-token');
-		syncStatus.online = false;
+		setOnline(false);
 		const screen = await render(Layout, { children });
 		await expect.element(screen.getByText(/Offline: showing saved data/)).toBeVisible();
 
-		syncStatus.online = true;
+		setOnline(true);
 		syncStatus.blocked = 'auth';
 		await expect.element(screen.getByText(/Session expired/)).toBeVisible();
 	});

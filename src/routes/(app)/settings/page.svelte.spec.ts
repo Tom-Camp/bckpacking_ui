@@ -6,6 +6,7 @@ import { db } from '$lib/data/db';
 import { syncStatus } from '$lib/sync/status.svelte';
 import { mockApi, respond } from '$lib/test/api';
 import { trip, user } from '$lib/test/fixtures';
+import { setNavigatorOnline, setOnline } from '$lib/test/online';
 import { renderApp } from '$lib/test/render';
 import Page from './+page.svelte';
 
@@ -131,10 +132,23 @@ describe('settings page', () => {
 	});
 
 	it('needs a connection to change the password', async () => {
-		syncStatus.online = false;
+		setOnline(false);
 		const screen = await renderApp(Page, {}, { user: me });
 
 		await expect.element(screen.getByRole('button', { name: 'Change password' })).toBeDisabled();
+	});
+
+	it('explains, rather than sends, when the connection drops before the UI notices', async () => {
+		const requests = mockApi({ [PASSWORD_ROUTE]: () => respond(204) });
+		const screen = await renderApp(Page, {}, { user: me });
+		await fillPasswords(screen);
+		setNavigatorOnline(false);
+		await screen.getByRole('button', { name: 'Change password' }).click();
+
+		await expect
+			.element(screen.getByRole('alert'))
+			.toHaveTextContent('You’re offline. This needs a connection.');
+		expect(requests).toEqual([]);
 	});
 
 	it('signs out, wiping this device', async () => {

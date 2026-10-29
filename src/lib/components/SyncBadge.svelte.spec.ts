@@ -3,6 +3,7 @@ import { render } from 'vitest-browser-svelte';
 import { db } from '$lib/data/db';
 import { sync } from '$lib/sync/engine';
 import { syncStatus } from '$lib/sync/status.svelte';
+import { setOnline } from '$lib/test/online';
 import SyncBadge from './SyncBadge.svelte';
 
 const badge = (screen: Awaited<ReturnType<typeof render>>) => screen.getByTestId('sync-badge');
@@ -78,7 +79,7 @@ describe('SyncBadge', () => {
 		await badge(screen).click();
 		await expect.element(screen.getByText(/Your session expired/)).toBeVisible();
 
-		syncStatus.online = false;
+		setOnline(false);
 		await expect.element(screen.getByRole('button', { name: 'Sync now' })).toBeDisabled();
 	});
 });

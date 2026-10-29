@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { db } from '$lib/data/db';
-import { syncStatus } from '$lib/sync/status.svelte';
 import { gearItem, trip, tripGear } from '$lib/test/fixtures';
+import { setOnline } from '$lib/test/online';
 import { renderApp } from '$lib/test/render';
 import Page from './+page.svelte';
 
@@ -35,7 +35,7 @@ describe('trips page', () => {
 	});
 
 	it('cannot start a new trip offline', async () => {
-		syncStatus.online = false;
+		setOnline(false);
 		const screen = await renderApp(Page);
 		const newTrip = screen.getByRole('link', { name: 'New trip' });
 		await expect.element(newTrip).toHaveAttribute('aria-disabled', 'true');

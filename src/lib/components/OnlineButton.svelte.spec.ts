@@ -1,7 +1,7 @@
 import { createRawSnippet } from 'svelte';
 import { describe, expect, it } from 'vitest';
+import { setOnline } from '$lib/test/online';
 import { renderApp } from '$lib/test/render';
-import { syncStatus } from '$lib/sync/status.svelte';
 import OnlineButton from './OnlineButton.svelte';
 
 const children = createRawSnippet(() => ({ render: () => '<span>New trip</span>' }));
@@ -13,7 +13,7 @@ describe('OnlineButton', () => {
 	});
 
 	it('is disabled with an explanation while offline', async () => {
-		syncStatus.online = false;
+		setOnline(false);
 		const screen = await renderApp(OnlineButton, { children });
 
 		const button = screen.getByRole('button', { name: 'New trip' });

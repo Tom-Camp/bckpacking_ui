@@ -4,6 +4,7 @@ import { db } from '$lib/data/db';
 import { syncStatus } from '$lib/sync/status.svelte';
 import { mockApi, respond } from '$lib/test/api';
 import { trip } from '$lib/test/fixtures';
+import { setOnline } from '$lib/test/online';
 import { renderApp } from '$lib/test/render';
 import ShareDialog from './ShareDialog.svelte';
 
@@ -66,7 +67,7 @@ describe('ShareDialog', () => {
 	});
 
 	it('keeps toggles and Copy working offline but disables link changes', async () => {
-		syncStatus.online = false;
+		setOnline(false);
 		const { screen } = await renderDialog({ share_token: 'tok' });
 
 		await expect.element(screen.getByRole('button', { name: 'Stop sharing' })).toBeDisabled();
@@ -95,7 +96,7 @@ describe('ShareDialog', () => {
 	});
 
 	it('disables Create link offline', async () => {
-		syncStatus.online = false;
+		setOnline(false);
 		const { screen } = await renderDialog();
 		await expect.element(screen.getByRole('button', { name: 'Create link' })).toBeDisabled();
 	});
