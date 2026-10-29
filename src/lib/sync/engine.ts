@@ -6,7 +6,7 @@ import { db, GEAR_CATEGORIES_KEY, getMeta, setMeta, type OutboxEntry } from '$li
 import { claimInFlight, getLocalVersion } from './outbox';
 import { syncStatus } from './status.svelte';
 
-export type FlushResult = 'done' | 'offline' | 'auth' | 'server';
+export type FlushResult = 'done' | 'offline' | 'auth' | 'suspended' | 'server';
 
 /** Replays queued PATCHes oldest-first. Stops at the first entry that can't be sent yet. */
 export async function flush(): Promise<FlushResult> {
@@ -39,6 +39,11 @@ export async function flush(): Promise<FlushResult> {
 				continue;
 			}
 			if (response.status === 401) return 'auth';
+			// The API sends 403 only for a suspended account, which an admin can restore.
+			if (response.status === 403) {
+				await db.outbox.update(seq, { attempts: entry.attempts + 1, lastError: 'HTTP 403' });
+				return 'suspended';
+			}
 			if (response.status >= 500 || response.status === 408 || response.status === 429) {
 				await db.outbox.update(seq, {
 					attempts: entry.attempts + 1,
@@ -47,7 +52,7 @@ export async function flush(): Promise<FlushResult> {
 				return 'server';
 			}
 
-			// 403/404/409/422: the change can never succeed (e.g. the record was deleted on
+			// 404/409/422: the change can never succeed (e.g. the record was deleted on
 			// another device). Drop it; the next pull restores the server's version.
 			const body = await response.json().catch(() => null);
 			const error = describeDetail(body?.detail) ?? `HTTP ${response.status}`;
@@ -130,7 +135,8 @@ async function syncOnce(): Promise<void> {
 		syncStatus.blocked = null;
 	} catch (e) {
 		const status = (e as { status?: number }).status;
-		syncStatus.blocked = status === 401 ? 'auth' : status ? 'server' : 'offline';
+		syncStatus.blocked =
+			status === 401 ? 'auth' : status === 403 ? 'suspended' : status ? 'server' : 'offline';
 	} finally {
 		syncStatus.syncing = false;
 	}

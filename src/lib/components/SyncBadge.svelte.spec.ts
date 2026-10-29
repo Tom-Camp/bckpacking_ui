@@ -14,6 +14,7 @@ describe('SyncBadge', () => {
 		[{ failed: 1 }, '1 not synced'],
 		[{ syncing: true }, 'Syncing…'],
 		[{ blocked: 'auth' as const }, 'Sign in to sync'],
+		[{ blocked: 'suspended' as const }, 'Account suspended'],
 		[{ online: false }, 'Offline'],
 		[{ online: false, pending: 3 }, 'Offline · 3 pending']
 	])('labels %o as “%s”', async (status, label) => {
@@ -60,6 +61,15 @@ describe('SyncBadge', () => {
 		await screen.getByRole('button', { name: 'Dismiss' }).click();
 		await expect.element(screen.getByText('Couldn’t sync')).not.toBeInTheDocument();
 		expect(await db.failed.count()).toBe(0);
+	});
+
+	it('explains a suspended account', async () => {
+		Object.assign(syncStatus, { blocked: 'suspended' });
+		const screen = await render(SyncBadge);
+		await badge(screen).click();
+		await expect
+			.element(screen.getByText(/Your account is suspended; changes will sync if it’s restored/))
+			.toBeVisible();
 	});
 
 	it('explains an expired session and cannot sync offline', async () => {
