@@ -265,7 +265,9 @@ describe('safeHttpUrl', () => {
 			'https:/example.com',
 			'https:///example.com',
 			'http:\\\\example.com',
-			'https:/\\example.com'
+			'https:/\\example.com',
+			'https://\t/example.com',
+			'https://\n/example.com'
 		])
 			expect(safeHttpUrl(url)).toBeNull();
 	});
