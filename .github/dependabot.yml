@@ -36,6 +36,7 @@ updates:
           - 'vite'
           - '@sveltejs/vite-plugin-svelte'
           - '@sveltejs/kit'
+          - '@sveltejs/adapter-static'
       eslint:
         patterns:
           - 'eslint'
@@ -55,6 +56,11 @@ updates:
       # @types/node must match the Node runtime's major. Bump it by hand along
       # with NODE_VERSION in .github/workflows/ (and `engines`, if one is added).
       - dependency-name: '@types/node'
+        update-types:
+          - version-update:semver-major
+      # Hold kit 3 until @vite-pwa/sveltekit supports it (1.1.0 peers on
+      # kit ^1.3.1 || ^2.0.1). Remove this once it does.
+      - dependency-name: '@sveltejs/kit'
         update-types:
           - version-update:semver-major
 
