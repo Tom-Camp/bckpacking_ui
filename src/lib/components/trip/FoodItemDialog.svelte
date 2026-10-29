@@ -10,7 +10,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import { addFood, updateFood } from '$lib/data/mutations';
-	import { dayLabel, MEAL_LABELS } from '$lib/domain/food';
+	import { dayLabel, MAX_KCAL, MEAL_LABELS } from '$lib/domain/food';
 	import { errorMessage } from '$lib/errors';
 
 	let {
@@ -155,6 +155,7 @@
 						type="number"
 						inputmode="numeric"
 						min="0"
+						max={MAX_KCAL}
 						step="1"
 						required
 						bind:value={form.kcal}

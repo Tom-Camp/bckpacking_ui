@@ -65,6 +65,16 @@ describe('FoodPlan', () => {
 		expect(await db.outbox.count()).toBe(0);
 	});
 
+	it('keeps the calorie target when it is above what the API accepts', async () => {
+		const screen = await setup();
+		await screen.getByLabelText('Calories per day').fill('2147483648');
+		await userEvent.tab();
+
+		await expect.element(screen.getByLabelText('Calories per day')).toHaveValue(2700);
+		expect((await db.trips.get('trip-1'))?.food_plan?.target_kcal_per_day).toBe(2700);
+		expect(await db.outbox.count()).toBe(0);
+	});
+
 	it('rounds the calorie target to a whole number', async () => {
 		const screen = await setup();
 		await screen.getByLabelText('Calories per day').fill('3000.4');

@@ -90,6 +90,21 @@ describe('FoodItemDialog', () => {
 		expect((await db.trips.get('trip-1'))?.food_plan?.food[0].kcal).toBe(251);
 	});
 
+	it('won’t save calories above what the API accepts', async () => {
+		const item = food({ name: 'Oatmeal', kcal: 400 });
+		const t = trip();
+		t.food_plan!.food = [item];
+		await db.trips.put(t);
+		const screen = await renderApp(FoodItemDialog, { open: true, trip: t, days: 3, item });
+
+		await screen.getByLabelText('Calories').fill('2147483648');
+		await screen.getByRole('button', { name: 'Save' }).click();
+
+		await expect.element(screen.getByRole('dialog')).toBeVisible();
+		expect((await db.trips.get('trip-1'))?.food_plan?.food[0].kcal).toBe(400);
+		expect(await db.outbox.count()).toBe(0);
+	});
+
 	it('won’t save a blank name', async () => {
 		const item = food({ name: 'Oatmeal' });
 		const t = trip();

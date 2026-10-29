@@ -10,7 +10,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { deleteFood, updateFoodPlan } from '$lib/data/mutations';
-	import { dayLabel, MEAL_LABELS, planByDay } from '$lib/domain/food';
+	import { dayLabel, MAX_KCAL, MEAL_LABELS, planByDay } from '$lib/domain/food';
 	import { formatWeight } from '$lib/domain/units';
 	import { attempt } from '$lib/errors';
 	import { cn } from '$lib/utils';
@@ -71,13 +71,14 @@
 						type="number"
 						inputmode="numeric"
 						min="0"
+						max={MAX_KCAL}
 						step="1"
 						value={plan.target_kcal_per_day}
 						onchange={(e) => {
-							// Whole calories only, and a cleared field keeps the target rather than sending 0.
+							// Whole calories only, and a cleared or out-of-range field keeps the target.
 							const raw = e.currentTarget.value;
 							const v = raw.trim() === '' ? NaN : Math.round(Number(raw));
-							if (!Number.isFinite(v) || v < 0) {
+							if (!Number.isFinite(v) || v < 0 || v > MAX_KCAL) {
 								e.currentTarget.value = String(plan.target_kcal_per_day);
 								return;
 							}

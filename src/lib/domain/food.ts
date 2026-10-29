@@ -1,6 +1,9 @@
 import type { Meal, Trip, TripFood } from '$lib/api/types';
 import { MEALS } from '$lib/api/types';
 
+/** The API stores calories as a 32-bit integer and rejects anything larger. */
+export const MAX_KCAL = 2_147_483_647;
+
 /** Parses an API date ("2026-08-26") as a local calendar date, avoiding UTC day shifts. */
 export function parseDate(iso: string): Date {
 	const [y, m, d] = iso.split('-').map(Number);
