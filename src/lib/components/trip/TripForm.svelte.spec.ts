@@ -96,6 +96,19 @@ describe('TripForm', () => {
 		expect(onsubmit).not.toHaveBeenCalled();
 	});
 
+	it('rejects a map link the API would, even though the browser can parse it', async () => {
+		const onsubmit = vi.fn(async (_body: TripCreate) => {});
+		const screen = await renderApp(TripForm, { submitLabel: 'Create trip', onsubmit });
+		await screen.getByLabelText('Trip name').fill('Art Loeb');
+		await screen.getByLabelText('Map link').fill('https:example.com');
+		await screen.getByRole('button', { name: 'Create trip' }).click();
+
+		await expect
+			.element(screen.getByRole('alert'))
+			.toHaveTextContent('Map link must start with http:// or https://');
+		expect(onsubmit).not.toHaveBeenCalled();
+	});
+
 	it('submits a trimmed https map link', async () => {
 		const onsubmit = vi.fn(async (_body: TripCreate) => {});
 		const screen = await renderApp(TripForm, { submitLabel: 'Create trip', onsubmit });
