@@ -4,6 +4,7 @@
 	import { getAppContext } from '$lib/app-context';
 	import { TRIP_TYPE_LABELS } from '$lib/domain/checklist';
 	import { formatDateRange, tripDays } from '$lib/domain/food';
+	import { safeHttpUrl } from '$lib/domain/trip';
 	import { formatDistance, formatElevation, formatVolume } from '$lib/domain/units';
 	import Notes from './Notes.svelte';
 	import WeightSummary from './WeightSummary.svelte';
@@ -16,6 +17,8 @@
 		const days = tripDays(trip);
 		return range && days ? `${range} (${days} day${days > 1 ? 's' : ''})` : range;
 	});
+
+	const mapUrl = $derived(safeHttpUrl(trip.map_link));
 
 	const details = $derived(
 		[
@@ -58,14 +61,18 @@
 			<div>
 				<dt class="text-muted-foreground">Map</dt>
 				<dd>
-					<a
-						href={trip.map_link}
-						target="_blank"
-						rel="noreferrer"
-						class="inline-flex items-center gap-1 font-medium underline underline-offset-4"
-					>
-						Open map <ExternalLinkIcon class="size-3.5" />
-					</a>
+					{#if mapUrl}
+						<a
+							href={mapUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="inline-flex items-center gap-1 font-medium underline underline-offset-4"
+						>
+							Open map <ExternalLinkIcon class="size-3.5" />
+						</a>
+					{:else}
+						<span class="font-medium break-all">{trip.map_link}</span>
+					{/if}
 				</dd>
 			</div>
 		{/if}

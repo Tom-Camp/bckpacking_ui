@@ -73,6 +73,29 @@ describe('TripForm', () => {
 		expect(onsubmit).not.toHaveBeenCalled();
 	});
 
+	it('rejects a map link that isn’t http(s)', async () => {
+		const onsubmit = vi.fn(async () => {});
+		const screen = await renderApp(TripForm, { submitLabel: 'Create trip', onsubmit });
+		await screen.getByLabelText('Trip name').fill('Art Loeb');
+		await screen.getByLabelText('Map link').fill('ftp://example.com/map');
+		await screen.getByRole('button', { name: 'Create trip' }).click();
+
+		await expect
+			.element(screen.getByRole('alert'))
+			.toHaveTextContent('Map link must start with http:// or https://');
+		expect(onsubmit).not.toHaveBeenCalled();
+	});
+
+	it('submits a trimmed https map link', async () => {
+		const onsubmit = vi.fn(async (_body: TripCreate) => {});
+		const screen = await renderApp(TripForm, { submitLabel: 'Create trip', onsubmit });
+		await screen.getByLabelText('Trip name').fill('Art Loeb');
+		await screen.getByLabelText('Map link').fill(' https://caltopo.com/m/abc ');
+		await screen.getByRole('button', { name: 'Create trip' }).click();
+
+		expect(onsubmit.mock.calls[0][0].map_link).toBe('https://caltopo.com/m/abc');
+	});
+
 	it('shows an error from saving', async () => {
 		const screen = await renderApp(TripForm, {
 			submitLabel: 'Create trip',

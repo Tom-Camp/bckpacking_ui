@@ -53,6 +53,13 @@ describe('Overview', () => {
 		await expect.element(screen.getByRole('link', { name: 'Open map' })).not.toBeInTheDocument();
 	});
 
+	it('shows a map link that isn’t http(s) as text, not a link', async () => {
+		const screen = await renderApp(Overview, { trip: trip({ map_link: 'javascript:alert(1)' }) });
+
+		await expect.element(screen.getByText('javascript:alert(1)')).toBeVisible();
+		await expect.element(screen.getByRole('link', { name: 'Open map' })).not.toBeInTheDocument();
+	});
+
 	it('includes the pack weight and notes', async () => {
 		const screen = await renderApp(Overview, { trip: trip() });
 		await expect.element(screen.getByText('Pack weight')).toBeVisible();

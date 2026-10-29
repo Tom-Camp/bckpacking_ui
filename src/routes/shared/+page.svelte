@@ -20,6 +20,7 @@
 	} from '$lib/domain/checklist';
 	import { dayLabel, formatDateRange, MEAL_LABELS, planByDay, tripDays } from '$lib/domain/food';
 	import { groupByCategory } from '$lib/domain/gear';
+	import { safeHttpUrl } from '$lib/domain/trip';
 	import { formatDistance, formatElevation, formatVolume, formatWeight } from '$lib/domain/units';
 	import { gearLineWeight, summarizeWeights } from '$lib/domain/weights';
 	import { errorMessage } from '$lib/errors';
@@ -108,6 +109,8 @@
 		const days = tripDays(trip);
 		return range && days ? `${range} (${days} day${days > 1 ? 's' : ''})` : range;
 	});
+
+	const mapUrl = $derived(safeHttpUrl(trip?.map_link ?? null));
 
 	const details = $derived(
 		trip
@@ -215,15 +218,19 @@
 					<div>
 						<dt class="text-muted-foreground">Map</dt>
 						<dd>
-							<a
-								href={t.map_link}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="inline-flex items-center gap-1 font-medium break-all underline underline-offset-4"
-							>
-								Open map <ExternalLinkIcon class="size-3.5 print:hidden" />
-							</a>
-							<span class="hidden break-all print:inline">{t.map_link}</span>
+							{#if mapUrl}
+								<a
+									href={mapUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="inline-flex items-center gap-1 font-medium break-all underline underline-offset-4"
+								>
+									Open map <ExternalLinkIcon class="size-3.5 print:hidden" />
+								</a>
+								<span class="hidden break-all print:inline">{t.map_link}</span>
+							{:else}
+								<span class="font-medium break-all">{t.map_link}</span>
+							{/if}
 						</dd>
 					</div>
 				{/if}
