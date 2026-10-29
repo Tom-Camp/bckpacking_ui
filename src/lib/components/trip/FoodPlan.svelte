@@ -71,10 +71,19 @@
 						type="number"
 						inputmode="numeric"
 						min="0"
+						step="1"
 						value={plan.target_kcal_per_day}
 						onchange={(e) => {
-							const v = Number(e.currentTarget.value);
-							if (v >= 0) void attempt(() => updateFoodPlan(trip.id, { target_kcal_per_day: v }));
+							// Whole calories only, and a cleared field keeps the target rather than sending 0.
+							const raw = e.currentTarget.value;
+							const v = raw.trim() === '' ? NaN : Math.round(Number(raw));
+							if (!Number.isFinite(v) || v < 0) {
+								e.currentTarget.value = String(plan.target_kcal_per_day);
+								return;
+							}
+							e.currentTarget.value = String(v);
+							if (v !== plan.target_kcal_per_day)
+								void attempt(() => updateFoodPlan(trip.id, { target_kcal_per_day: v }));
 						}}
 					/>
 				</div>

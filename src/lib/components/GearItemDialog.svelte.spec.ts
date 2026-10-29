@@ -90,6 +90,19 @@ describe('GearItemDialog', () => {
 		expect(await db.outbox.count()).toBe(1);
 	});
 
+	it('won’t save a blank name', async () => {
+		const item = gearItem({ name: 'Tent' });
+		await db.gearItems.put(item);
+		const screen = await renderApp(GearItemDialog, { open: true, item });
+
+		await screen.getByLabelText('Name').fill('   ');
+		await screen.getByRole('button', { name: 'Save' }).click();
+
+		await expect.element(screen.getByRole('alert')).toHaveTextContent("Name can't be blank.");
+		expect((await db.gearItems.get(item.id))?.name).toBe('Tent');
+		expect(await db.outbox.count()).toBe(0);
+	});
+
 	it('requires a category before creating', async () => {
 		const requests = mockApi({});
 		const screen = await renderApp(GearItemDialog, { open: true });

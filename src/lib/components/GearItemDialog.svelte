@@ -66,6 +66,11 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		const name = form.name.trim();
+		if (!name) {
+			error = "Name can't be blank.";
+			return;
+		}
 		// Also catches items saved before categories became an enum (e.g. "kitchen").
 		const category = form.category;
 		if (!isGearCategory(category, categoryOptions)) {
@@ -75,7 +80,7 @@
 		busy = true;
 		error = null;
 		const body = {
-			name: form.name.trim(),
+			name,
 			category,
 			weight_g: form.weight_g ?? 0,
 			kind: form.kind,

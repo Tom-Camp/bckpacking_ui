@@ -72,4 +72,36 @@ describe('FoodItemDialog', () => {
 			`/api/v1/trips/trip-1/food-plan/items/${item.id}`
 		);
 	});
+
+	it('rounds calories to a whole number', async () => {
+		const item = food({ name: 'Oatmeal', kcal: 400 });
+		const t = trip();
+		t.food_plan!.food = [item];
+		await db.trips.put(t);
+		const screen = await renderApp(FoodItemDialog, { open: true, trip: t, days: 3, item });
+
+		// `step="1"` would block the browser's own validation; loosen it to reach the rounding.
+		(screen.getByLabelText('Calories').element() as HTMLInputElement).step = 'any';
+		await screen.getByLabelText('Calories').fill('250.6');
+		await screen.getByRole('button', { name: 'Save' }).click();
+
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+		expect((await db.outbox.toArray())[0].body).toMatchObject({ kcal: 251 });
+		expect((await db.trips.get('trip-1'))?.food_plan?.food[0].kcal).toBe(251);
+	});
+
+	it('won’t save a blank name', async () => {
+		const item = food({ name: 'Oatmeal' });
+		const t = trip();
+		t.food_plan!.food = [item];
+		await db.trips.put(t);
+		const screen = await renderApp(FoodItemDialog, { open: true, trip: t, days: 3, item });
+
+		await screen.getByLabelText('Name').fill('   ');
+		await screen.getByRole('button', { name: 'Save' }).click();
+
+		await expect.element(screen.getByRole('alert')).toHaveTextContent("Name can't be blank.");
+		expect((await db.trips.get('trip-1'))?.food_plan?.food[0].name).toBe('Oatmeal');
+		expect(await db.outbox.count()).toBe(0);
+	});
 });

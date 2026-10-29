@@ -57,6 +57,16 @@ describe('TripForm', () => {
 		});
 	});
 
+	it('won’t save a blank name', async () => {
+		const onsubmit = vi.fn(async () => {});
+		const screen = await renderApp(TripForm, { submitLabel: 'Create trip', onsubmit });
+		await screen.getByLabelText('Trip name').fill('   ');
+		await screen.getByRole('button', { name: 'Create trip' }).click();
+
+		await expect.element(screen.getByRole('alert')).toHaveTextContent("Name can't be blank.");
+		expect(onsubmit).not.toHaveBeenCalled();
+	});
+
 	it('rejects an end date before the start date', async () => {
 		const onsubmit = vi.fn(async () => {});
 		const screen = await renderApp(TripForm, { submitLabel: 'Create trip', onsubmit });
