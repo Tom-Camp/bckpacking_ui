@@ -105,11 +105,30 @@ describe('login page', () => {
 		await expect.element(screen.getByText('Email verified. Sign in to continue.')).toBeVisible();
 	});
 
-	it('shows no verified notice by default', async () => {
+	it('confirms a password reset', async () => {
+		setRoute('/login?reset=1');
+		const screen = await render(Page);
+
+		await expect
+			.element(screen.getByText('Password updated. Sign in with your new password.'))
+			.toBeVisible();
+	});
+
+	it('links to password reset', async () => {
+		const screen = await render(Page);
+		await expect
+			.element(screen.getByRole('link', { name: 'Forgot password?' }))
+			.toHaveAttribute('href', '/forgot-password');
+	});
+
+	it('shows no notice by default', async () => {
 		const screen = await render(Page);
 
 		await expect
 			.element(screen.getByText('Email verified.', { exact: false }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByText('Password updated.', { exact: false }))
 			.not.toBeInTheDocument();
 	});
 

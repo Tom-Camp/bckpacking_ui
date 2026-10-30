@@ -8,6 +8,8 @@ export type UserCreate = Schemas['UserCreate'];
 export type ChangePasswordRequest = Schemas['ChangePasswordRequest'];
 export type VerifyEmailRequest = Schemas['VerifyEmailRequest'];
 export type ResendVerificationRequest = Schemas['ResendVerificationRequest'];
+export type ForgotPasswordRequest = Schemas['ForgotPasswordRequest'];
+export type ResetPasswordRequest = Schemas['ResetPasswordRequest'];
 export type Unit = Schemas['Unit'];
 
 export type Trip = Schemas['TripRead'];

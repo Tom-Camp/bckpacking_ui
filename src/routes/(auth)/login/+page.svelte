@@ -19,8 +19,13 @@
 	// The address the API refused as unverified; the resend button sends to it.
 	let unverified = $state<string | null>(null);
 
-	// Set by the verify-email page after a successful verification.
-	const verified = page.url.searchParams.get('verified') === '1';
+	// Set by the verify-email and reset-password pages when they send the user here.
+	const notice =
+		page.url.searchParams.get('verified') === '1'
+			? 'Email verified. Sign in to continue.'
+			: page.url.searchParams.get('reset') === '1'
+				? 'Password updated. Sign in with your new password.'
+				: null;
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
@@ -52,10 +57,10 @@
 	</Card.Header>
 	<Card.Content>
 		<form class="grid grid-cols-1 gap-4" onsubmit={submit}>
-			{#if verified && !error}
+			{#if notice && !error}
 				<Alert.Root>
 					<CircleCheckIcon />
-					<Alert.Description>Email verified. Sign in to continue.</Alert.Description>
+					<Alert.Description>{notice}</Alert.Description>
 				</Alert.Root>
 			{/if}
 			<FormError message={error} />
@@ -67,7 +72,13 @@
 				<Input id="email" type="email" autocomplete="email" required bind:value={email} />
 			</div>
 			<div class="grid grid-cols-1 gap-2">
-				<Label for="password">Password</Label>
+				<div class="flex items-center justify-between">
+					<Label for="password">Password</Label>
+					<a
+						href="/forgot-password"
+						class="text-sm text-muted-foreground underline underline-offset-4">Forgot password?</a
+					>
+				</div>
 				<Input
 					id="password"
 					type="password"
