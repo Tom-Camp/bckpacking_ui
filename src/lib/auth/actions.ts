@@ -62,3 +62,16 @@ export async function logout(): Promise<void> {
 	session.clear();
 	await clearLocalData();
 }
+
+/** Returns the API's neutral message, which doesn't say whether the account exists. */
+export async function requestPasswordReset(email: string): Promise<string> {
+	const { message } = await call(() =>
+		api.POST('/api/v1/auth/forgot-password', { body: { email } })
+	);
+	return message;
+}
+
+/** Sets a new password from an emailed reset link. Doesn't sign in. */
+export async function resetPassword(token: string, password: string): Promise<void> {
+	await call(() => api.POST('/api/v1/auth/reset-password', { body: { token, password } }));
+}
