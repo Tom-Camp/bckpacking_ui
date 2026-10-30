@@ -42,6 +42,11 @@ Then use DevTools → Network → Offline, and reload.
 | `npm run gen:api`   | Regenerate API types after backend schema changes                  |
 | `npm run gen:icons` | Regenerate PWA icons from `static/logo.svg`                        |
 
+The e2e tests register new accounts and mark them verified directly in the API's database (new
+accounts can't sign in until their email is verified). Run `npx playwright test` with the same
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST` and `POSTGRES_PORT` as the
+API, e.g. `set -a; . ../bckpack.ing_api/.env; set +a` first. CI sets them already.
+
 ## How offline works
 
 ```

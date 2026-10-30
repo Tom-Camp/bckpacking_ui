@@ -1,8 +1,11 @@
 import { toast } from 'svelte-sonner';
-import { ApiError, OfflineError } from '$lib/api/client';
+import { ApiError, describeDetail, OfflineError } from '$lib/api/client';
 
 export function errorMessage(e: unknown): string {
 	if (e instanceof OfflineError) return 'You’re offline. This needs a connection.';
+	// nginx's rate limit answers with a JSON detail, but a misconfigured proxy may send HTML.
+	if (e instanceof ApiError && e.status === 429 && describeDetail(e.detail) === undefined)
+		return 'Too many requests, try again in a minute';
 	if (e instanceof ApiError) return e.message;
 	if (e instanceof Error) return e.message;
 	return 'Something went wrong.';

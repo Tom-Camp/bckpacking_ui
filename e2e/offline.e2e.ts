@@ -1,18 +1,14 @@
 import { expect, test } from '@playwright/test';
+import { registerAndSignIn } from './auth';
 
-// Needs the API running on localhost:8000 (the preview server proxies /api to it).
+// Needs the API running on localhost:8000 (the preview server proxies /api to it), and the
+// API's POSTGRES_* variables to verify the new account (see README).
 
 test('trip data opens offline and offline edits sync on reconnect', async ({ page, context }) => {
 	const stamp = Date.now();
 	const password = 'Ridge-Sunrise-Trailhead-2026!';
 
-	// Register (logs in automatically)
-	await page.goto('/register');
-	await page.getByLabel('Username').fill(`e2e_${stamp}`);
-	await page.getByLabel('Email').fill(`e2e_${stamp}@example.com`);
-	await page.getByLabel('Password').fill(password);
-	await page.getByRole('button', { name: 'Create account' }).click();
-	await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+	await registerAndSignIn(page, `e2e_${stamp}`, password);
 
 	// Gear closet item
 	await page.getByRole('link', { name: 'Gear closet' }).click();

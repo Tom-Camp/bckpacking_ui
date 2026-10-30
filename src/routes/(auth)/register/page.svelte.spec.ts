@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { goto } from '$app/navigation';
+import { session } from '$lib/auth/session.svelte';
+import { db } from '$lib/data/db';
 import { mockApi, respond } from '$lib/test/api';
-import { user } from '$lib/test/fixtures';
 import Page from './+page.svelte';
 
 async function fill(screen: Awaited<ReturnType<typeof render>>, password: string) {
@@ -26,28 +27,57 @@ describe('register page', () => {
 		expect(requests).toEqual([]);
 	});
 
-	it('creates the account, signs in and goes to the trips list', async () => {
-		const me = user({ username: 'sam_hikes', email: 'sam@example.com', first_name: 'Sam' });
+	it('creates the account and asks the user to check their inbox, without signing in', async () => {
 		const requests = mockApi({
-			'POST /api/v1/auth/register': () => respond(201, me),
-			'POST /api/v1/auth/login': () => ({ access_token: 'jwt-token', token_type: 'bearer' }),
-			'GET /api/v1/users/me': () => me
+			'POST /api/v1/auth/register': () =>
+				respond(201, {
+					message: 'Registration successful. Check your email to verify your account.'
+				})
 		});
 		const screen = await render(Page);
 		await fill(screen, 'Ridge-Sunrise-Trailhead-2026!');
 		await expect.element(screen.getByText('Very strong')).toBeVisible();
 		await screen.getByRole('button', { name: 'Create account' }).click();
 
-		await expect.poll(() => goto).toHaveBeenCalledWith('/');
-		expect(requests[0]).toEqual({
-			route: 'POST /api/v1/auth/register',
-			body: {
-				email: 'sam@example.com',
-				username: 'sam_hikes',
-				password: 'Ridge-Sunrise-Trailhead-2026!',
-				first_name: 'Sam',
-				last_name: null
+		await expect.element(screen.getByText('Check your inbox')).toBeVisible();
+		await expect.element(screen.getByText('sam@example.com')).toBeVisible();
+		await expect
+			.element(screen.getByRole('link', { name: 'Sign in' }))
+			.toHaveAttribute('href', '/login');
+		expect(requests).toEqual([
+			{
+				route: 'POST /api/v1/auth/register',
+				body: {
+					email: 'sam@example.com',
+					username: 'sam_hikes',
+					password: 'Ridge-Sunrise-Trailhead-2026!',
+					first_name: 'Sam',
+					last_name: null
+				}
 			}
+		]);
+		expect(goto).not.toHaveBeenCalled();
+		expect(session.signedIn).toBe(false);
+		expect(await db.users.count()).toBe(0);
+	});
+
+	it('resends the verification email to the address entered', async () => {
+		const requests = mockApi({
+			'POST /api/v1/auth/register': () => respond(201, { message: 'ok' }),
+			'POST /api/v1/auth/resend-verification': () =>
+				respond(202, { message: 'If that account needs verifying, we’ve sent a new link.' })
+		});
+		const screen = await render(Page);
+		await fill(screen, 'Ridge-Sunrise-Trailhead-2026!');
+		await screen.getByRole('button', { name: 'Create account' }).click();
+		await screen.getByRole('button', { name: 'Resend email' }).click();
+
+		await expect
+			.element(screen.getByRole('status'))
+			.toHaveTextContent('If that account needs verifying, we’ve sent a new link.');
+		expect(requests[1]).toEqual({
+			route: 'POST /api/v1/auth/resend-verification',
+			body: { email: 'sam@example.com' }
 		});
 	});
 

@@ -48,6 +48,7 @@
 		"husky": "^9.1.7",
 		"lint-staged": "^17.6.0",
 		"mode-watcher": "^1.1.0",
+		"postgres": "3.4.9",
 		"prettier": "^3.9.10",
 		"prettier-plugin-svelte": "^4.1.0",
 		"prettier-plugin-tailwindcss": "^0.8.0",
