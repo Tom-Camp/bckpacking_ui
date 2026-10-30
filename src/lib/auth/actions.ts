@@ -1,4 +1,4 @@
-import { api, call } from '$lib/api/client';
+import { api, ApiError, call } from '$lib/api/client';
 import type { UserCreate } from '$lib/api/types';
 import { clearLocalData, db, requestPersistentStorage } from '$lib/data/db';
 import { sync } from '$lib/sync/engine';
@@ -34,9 +34,28 @@ export async function login(email: string, password: string): Promise<void> {
 	void sync();
 }
 
+/** Creates the account. The API emails a verification link; the user signs in after using it. */
 export async function register(body: UserCreate): Promise<void> {
 	await call(() => api.POST('/api/v1/auth/register', { body }));
-	await login(body.email, body.password);
+}
+
+/** The login 403 `detail` for an unverified account. It's a contract with the API: keep it exact. */
+export const EMAIL_NOT_VERIFIED = 'Email not verified';
+
+export function isUnverified(e: unknown): boolean {
+	return e instanceof ApiError && e.status === 403 && e.detail === EMAIL_NOT_VERIFIED;
+}
+
+export async function verifyEmail(token: string): Promise<void> {
+	await call(() => api.POST('/api/v1/auth/verify-email', { body: { token } }));
+}
+
+/** Returns the API's neutral message, which doesn't say whether the account exists. */
+export async function resendVerification(email: string): Promise<string> {
+	const { message } = await call(() =>
+		api.POST('/api/v1/auth/resend-verification', { body: { email } })
+	);
+	return message;
 }
 
 export async function logout(): Promise<void> {

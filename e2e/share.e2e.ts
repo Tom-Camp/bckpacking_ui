@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { registerAndSignIn } from './auth';
 
-// Needs the API running on localhost:8000 (the preview server proxies /api to it).
+// Needs the API running on localhost:8000 (the preview server proxies /api to it), and the
+// API's POSTGRES_* variables to verify the new account (see README).
 
 test('a share link shows the chosen sections to a signed-out viewer until it is revoked', async ({
 	page,
@@ -8,12 +10,7 @@ test('a share link shows the chosen sections to a signed-out viewer until it is 
 }) => {
 	const stamp = Date.now();
 
-	await page.goto('/register');
-	await page.getByLabel('Username').fill(`share_${stamp}`);
-	await page.getByLabel('Email').fill(`share_${stamp}@example.com`);
-	await page.getByLabel('Password').fill('Ridge-Sunrise-Trailhead-2026!');
-	await page.getByRole('button', { name: 'Create account' }).click();
-	await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+	await registerAndSignIn(page, `share_${stamp}`, 'Ridge-Sunrise-Trailhead-2026!');
 
 	await page.getByRole('link', { name: 'Gear closet' }).click();
 	await page.getByRole('button', { name: 'New gear' }).click();

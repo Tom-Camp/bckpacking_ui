@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { goto } from '$app/navigation';
 import { session } from '$lib/auth/session.svelte';
@@ -6,6 +6,7 @@ import { db, GEAR_CATEGORIES_KEY, setMeta } from '$lib/data/db';
 import { enqueuePatch } from '$lib/sync/outbox';
 import { mockApi, respond } from '$lib/test/api';
 import { gearItem, trip, user } from '$lib/test/fixtures';
+import { setRoute } from '$lib/test/route';
 import Page from './+page.svelte';
 
 async function signIn(screen: Awaited<ReturnType<typeof render>>) {
@@ -15,6 +16,8 @@ async function signIn(screen: Awaited<ReturnType<typeof render>>) {
 }
 
 describe('login page', () => {
+	beforeEach(() => setRoute('/login'));
+
 	it('signs in, caches the profile and goes to the trips list', async () => {
 		const me = user();
 		const requests = mockApi({
@@ -44,6 +47,70 @@ describe('login page', () => {
 		await expect.element(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
 		expect(goto).not.toHaveBeenCalled();
 		expect(session.signedIn).toBe(false);
+	});
+
+	it('offers to resend the verification email when the account isn’t verified', async () => {
+		const requests = mockApi({
+			'POST /api/v1/auth/login': () => respond(403, { detail: 'Email not verified' }),
+			'POST /api/v1/auth/resend-verification': () =>
+				respond(202, { message: 'If that account needs verifying, we’ve sent a new link.' })
+		});
+		const screen = await render(Page);
+		await signIn(screen);
+
+		await expect
+			.element(screen.getByRole('alert'))
+			.toHaveTextContent('Verify your email before signing in.');
+		await screen.getByRole('button', { name: 'Resend verification email' }).click();
+
+		await expect
+			.element(screen.getByRole('status'))
+			.toHaveTextContent('If that account needs verifying, we’ve sent a new link.');
+		expect(requests[1]).toEqual({
+			route: 'POST /api/v1/auth/resend-verification',
+			body: { email: 'hiker@example.com' }
+		});
+		expect(goto).not.toHaveBeenCalled();
+		expect(session.signedIn).toBe(false);
+	});
+
+	it('shows other 403s as they are, without a resend button', async () => {
+		mockApi({ 'POST /api/v1/auth/login': () => respond(403, { detail: 'Account suspended' }) });
+		const screen = await render(Page);
+		await signIn(screen);
+
+		await expect.element(screen.getByRole('alert')).toHaveTextContent('Account suspended');
+		await expect
+			.element(screen.getByRole('button', { name: 'Resend verification email' }))
+			.not.toBeInTheDocument();
+	});
+
+	it('shows a friendly message for a rate limit without a JSON body', async () => {
+		vi.stubGlobal(
+			'fetch',
+			async () => new Response('<html>429 Too Many Requests</html>', { status: 429 })
+		);
+		const screen = await render(Page);
+		await signIn(screen);
+
+		await expect
+			.element(screen.getByRole('alert'))
+			.toHaveTextContent('Too many requests, try again in a minute');
+	});
+
+	it('confirms a just-verified email', async () => {
+		setRoute('/login?verified=1');
+		const screen = await render(Page);
+
+		await expect.element(screen.getByText('Email verified. Sign in to continue.')).toBeVisible();
+	});
+
+	it('shows no verified notice by default', async () => {
+		const screen = await render(Page);
+
+		await expect
+			.element(screen.getByText('Email verified.', { exact: false }))
+			.not.toBeInTheDocument();
 	});
 
 	it('signs back out and leaves cached data alone when the profile request fails', async () => {

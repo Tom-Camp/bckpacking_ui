@@ -6,6 +6,8 @@ export type User = Schemas['UserRead'];
 export type UserUpdate = Schemas['UserUpdate'];
 export type UserCreate = Schemas['UserCreate'];
 export type ChangePasswordRequest = Schemas['ChangePasswordRequest'];
+export type VerifyEmailRequest = Schemas['VerifyEmailRequest'];
+export type ResendVerificationRequest = Schemas['ResendVerificationRequest'];
 export type Unit = Schemas['Unit'];
 
 export type Trip = Schemas['TripRead'];
