@@ -17,7 +17,8 @@
 		"test:e2e": "playwright install && playwright test",
 		"gen:api": "npx -y openapi-typescript@7 ${API_TARGET:-http://localhost:8000}/openapi.json -o src/lib/api/schema.d.ts",
 		"gen:icons": "pwa-assets-generator --preset minimal-2023 static/logo.svg",
-		"commit": "cz"
+		"commit": "cz",
+		"release": "commit-and-tag-version --sign"
 	},
 	"devDependencies": {
 		"@commitlint/cli": "^21.2.3",
@@ -38,6 +39,7 @@
 		"@vitest/browser-playwright": "^5.0.5",
 		"bits-ui": "^2.19.5",
 		"cn": "^0.5.0",
+		"commit-and-tag-version": "^13.3.0",
 		"commitizen": "^4.3.2",
 		"cz-conventional-changelog": "^3.3.0",
 		"eslint": "^10.13.0",
