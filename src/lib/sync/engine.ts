@@ -2,11 +2,11 @@ import { liveQuery } from 'dexie';
 import { toast } from 'svelte-sonner';
 import { api, apiUrl, authedFetch, call, describeDetail } from '$lib/api/client';
 import { session } from '$lib/auth/session.svelte';
-import { db, getMeta, setMeta, type OutboxEntry } from '$lib/data/db';
+import { db, GEAR_CATEGORIES_KEY, getMeta, setMeta, type OutboxEntry } from '$lib/data/db';
 import { claimInFlight, getLocalVersion } from './outbox';
 import { syncStatus } from './status.svelte';
 
-export type FlushResult = 'done' | 'offline' | 'auth' | 'server';
+export type FlushResult = 'done' | 'offline' | 'auth' | 'suspended' | 'server';
 
 /** Replays queued PATCHes oldest-first. Stops at the first entry that can't be sent yet. */
 export async function flush(): Promise<FlushResult> {
@@ -39,6 +39,11 @@ export async function flush(): Promise<FlushResult> {
 				continue;
 			}
 			if (response.status === 401) return 'auth';
+			// The API sends 403 only for a suspended account, which an admin can restore.
+			if (response.status === 403) {
+				await db.outbox.update(seq, { attempts: entry.attempts + 1, lastError: 'HTTP 403' });
+				return 'suspended';
+			}
 			if (response.status >= 500 || response.status === 408 || response.status === 429) {
 				await db.outbox.update(seq, {
 					attempts: entry.attempts + 1,
@@ -47,7 +52,7 @@ export async function flush(): Promise<FlushResult> {
 				return 'server';
 			}
 
-			// 403/404/409/422: the change can never succeed (e.g. the record was deleted on
+			// 404/409/422: the change can never succeed (e.g. the record was deleted on
 			// another device). Drop it; the next pull restores the server's version.
 			const body = await response.json().catch(() => null);
 			const error = describeDetail(body?.detail) ?? `HTTP ${response.status}`;
@@ -69,16 +74,22 @@ export async function flush(): Promise<FlushResult> {
  */
 export async function pull(): Promise<boolean> {
 	const versionAtStart = getLocalVersion();
-	const [me, trips, gear] = await Promise.all([
+	const [me, trips, gear, categories] = await Promise.all([
 		call(() => api.GET('/api/v1/users/me')),
 		call(() => api.GET('/api/v1/trips')),
-		call(() => api.GET('/api/v1/gear', { params: { query: { include_archived: true } } }))
+		call(() => api.GET('/api/v1/gear', { params: { query: { include_archived: true } } })),
+		call(() => api.GET('/api/v1/gear/categories'))
 	]);
 
 	return db.transaction('rw', [db.trips, db.gearItems, db.users, db.outbox, db.meta], async () => {
 		if (getLocalVersion() !== versionAtStart || (await db.outbox.count()) > 0) return false;
 		await Promise.all([db.trips.clear(), db.gearItems.clear(), db.users.clear()]);
-		await Promise.all([db.trips.bulkPut(trips), db.gearItems.bulkPut(gear), db.users.put(me)]);
+		await Promise.all([
+			db.trips.bulkPut(trips),
+			db.gearItems.bulkPut(gear),
+			db.users.put(me),
+			setMeta(GEAR_CATEGORIES_KEY, categories)
+		]);
 		const now = Date.now();
 		await setMeta('lastSyncedAt', now);
 		syncStatus.lastSyncedAt = now;
@@ -124,7 +135,8 @@ async function syncOnce(): Promise<void> {
 		syncStatus.blocked = null;
 	} catch (e) {
 		const status = (e as { status?: number }).status;
-		syncStatus.blocked = status === 401 ? 'auth' : status ? 'server' : 'offline';
+		syncStatus.blocked =
+			status === 401 ? 'auth' : status === 403 ? 'suspended' : status ? 'server' : 'offline';
 	} finally {
 		syncStatus.syncing = false;
 	}

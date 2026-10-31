@@ -10,7 +10,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import { addFood, updateFood } from '$lib/data/mutations';
-	import { dayLabel, MEAL_LABELS } from '$lib/domain/food';
+	import { dayLabel, MAX_KCAL, MEAL_LABELS } from '$lib/domain/food';
 	import { errorMessage } from '$lib/errors';
 
 	let {
@@ -59,15 +59,21 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		const name = form.name.trim();
+		if (!name) {
+			error = "Name can't be blank.";
+			return;
+		}
 		busy = true;
 		error = null;
 		const body = {
 			day: Number(form.day),
 			meal_type: form.meal_type,
-			name: form.name.trim(),
+			name,
 			servings: form.servings,
 			weight_g: form.weight_g ?? 0,
-			kcal: form.kcal
+			// The API takes whole calories; a decimal would fail to sync.
+			kcal: Math.round(form.kcal)
 		};
 		try {
 			if (item) await updateFood(trip.id, item.id, body);
@@ -149,7 +155,8 @@
 						type="number"
 						inputmode="numeric"
 						min="0"
-						step="any"
+						max={MAX_KCAL}
+						step="1"
 						required
 						bind:value={form.kcal}
 					/>

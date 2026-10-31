@@ -20,6 +20,7 @@
 			return syncStatus.pending ? `Offline · ${syncStatus.pending} pending` : 'Offline';
 		if (syncStatus.syncing) return 'Syncing…';
 		if (syncStatus.blocked === 'auth') return 'Sign in to sync';
+		if (syncStatus.blocked === 'suspended') return 'Account suspended';
 		if (syncStatus.pending) return `${syncStatus.pending} pending`;
 		if (syncStatus.failed) return `${syncStatus.failed} not synced`;
 		return 'Synced';
@@ -60,6 +61,8 @@
 			<p class="text-sm">
 				Your session expired. <a class="underline" href="/login">Sign in</a> to send your changes.
 			</p>
+		{:else if syncStatus.blocked === 'suspended'}
+			<p class="text-sm">Your account is suspended; changes will sync if it’s restored.</p>
 		{/if}
 
 		<section class="grid grid-cols-1 gap-2">

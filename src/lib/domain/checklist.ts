@@ -20,7 +20,7 @@ export const STATUS_LABELS: Record<ChecklistStatus, string> = {
 	not_applicable: 'N/A'
 };
 
-export function sortChecklist(items: ChecklistItem[]): ChecklistItem[] {
+export function sortChecklist<T extends Pick<ChecklistItem, 'item'>>(items: T[]): T[] {
 	return [...items].sort(
 		(a, b) => CHECKLIST_ORDER.indexOf(a.item) - CHECKLIST_ORDER.indexOf(b.item)
 	);

@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { gearItem, trip, tripGear } from '$lib/test/fixtures';
-import { checklistReady, shuttleStatusFor } from './checklist';
+import type {
+	SharedChecklistItem,
+	SharedFoodPlan,
+	SharedTripFood,
+	SharedTripGear
+} from '$lib/api/types';
+import { gearCategories, gearItem, trip, tripGear } from '$lib/test/fixtures';
+import { checklistReady, shuttleStatusFor, sortChecklist } from './checklist';
 import { dayLabel, planByDay, tripDays } from './food';
+import {
+	categoryOption,
+	categoryOptions,
+	FALLBACK_CATEGORIES,
+	groupByCategory,
+	isGearCategory
+} from './gear';
+import { safeHttpUrl } from './trip';
 import { formatDistance, formatWeight, fromInput, G_PER_OZ, toInput } from './units';
 import { summarizeWeights } from './weights';
 
@@ -70,6 +84,56 @@ describe('weights', () => {
 	});
 });
 
+describe('shared trip shapes', () => {
+	// Share links return trips without ids, timestamps or private fields.
+	const oats: SharedTripFood = {
+		day: 2,
+		name: 'Oats',
+		meal_type: 'breakfast',
+		servings: 2,
+		weight_g: 100,
+		kcal: 400
+	};
+	const plan: SharedFoodPlan = {
+		target_kcal_per_day: 2700,
+		target_food_g_per_day: 794,
+		food: [oats]
+	};
+
+	it('summarizes weights', () => {
+		const gear_list: SharedTripGear[] = [
+			{
+				gear_item: {
+					name: 'Tent',
+					category: 'shelter',
+					category_label: 'Shelter',
+					weight_g: 1000,
+					kind: 'base'
+				},
+				quantity: 2,
+				packed: false
+			}
+		];
+		const w = summarizeWeights({ gear_list, food_plan: plan, water_carry_l: 1 });
+		expect(w.base_g).toBe(2000);
+		expect(w.pack_g).toBe(3200);
+	});
+
+	it('plans food by day', () => {
+		const days = planByDay({ start_date: null, end_date: null }, plan);
+		expect(days.map((d) => d.kcal)).toEqual([0, 800]);
+		expect(days[1].meals[0].items).toEqual([oats]);
+	});
+
+	it('sorts checklist items', () => {
+		const items: SharedChecklistItem[] = [
+			{ item: 'shuttle_scheduled', status: 'todo' },
+			{ item: 'permit', status: 'done' }
+		];
+		expect(sortChecklist(items).map((i) => i.item)).toEqual(['permit', 'shuttle_scheduled']);
+	});
+});
+
 describe('food', () => {
 	it('counts trip days inclusively', () => {
 		expect(tripDays(trip())).toBe(3);
@@ -117,5 +181,94 @@ describe('checklist', () => {
 		expect(shuttleStatusFor('point-to-point')).toBe('todo');
 		expect(shuttleStatusFor('loop')).toBe('not_applicable');
 		expect(shuttleStatusFor('out-and-back')).toBe('not_applicable');
+	});
+});
+
+describe('gear categories', () => {
+	const options = gearCategories;
+
+	it('looks up labels and files unknown categories under misc', () => {
+		expect(categoryOption({ category: 'cooking_water' }, options).label).toBe('Cooking & Water');
+		expect(categoryOption({ category: 'kitchen' }, options)).toEqual({
+			value: 'misc',
+			label: 'Miscellaneous'
+		});
+		expect(isGearCategory('shelter', options)).toBe(true);
+		expect(isGearCategory('kitchen', options)).toBe(false);
+	});
+
+	it('falls back to the bundled list until the API’s is cached', () => {
+		// The fixture mirrors `GET /gear/categories`, so the fallback must match it value for value.
+		expect(FALLBACK_CATEGORIES).toEqual(gearCategories);
+		expect(categoryOptions(undefined)).toBe(FALLBACK_CATEGORIES);
+		expect(categoryOptions([])).toBe(FALLBACK_CATEGORIES);
+
+		const cached = [{ value: 'sleep' as const, label: 'Sleep system' }];
+		expect(categoryOptions(cached)).toBe(cached);
+	});
+
+	it('uses the item’s own label while the list is loading', () => {
+		expect(
+			categoryOption({ category: 'cooking_water', category_label: 'Cooking & Water' }, [])
+		).toEqual({ value: 'cooking_water', label: 'Cooking & Water' });
+		expect(categoryOption({ category: 'kitchen' }, [])).toEqual({
+			value: 'kitchen',
+			label: 'kitchen'
+		});
+		expect(isGearCategory('shelter', [])).toBe(false);
+	});
+
+	it('groups by category, ordered by label', () => {
+		const items = [
+			gearItem({ name: 'Tent', category: 'shelter' }),
+			gearItem({ name: 'Stove', category: 'cooking_water' }),
+			gearItem({ name: 'Bivy', category: 'shelter' })
+		];
+		const groups = groupByCategory(items, (i) => i, options);
+		expect(groups.map((g) => [g.category.label, g.entries.map((i) => i.name)])).toEqual([
+			['Cooking & Water', ['Stove']],
+			['Shelter', ['Tent', 'Bivy']]
+		]);
+	});
+});
+
+describe('safeHttpUrl', () => {
+	it('keeps absolute http(s) URLs', () => {
+		for (const url of [
+			'https://caltopo.com/m/abc',
+			'http://example.com/map',
+			'HTTPS://Example.com'
+		])
+			expect(safeHttpUrl(url)).toBe(url);
+	});
+
+	it('rejects other schemes, relative paths and garbage', () => {
+		for (const url of [
+			'javascript:alert(1)',
+			'JavaScript:alert(1)',
+			' javascript:alert(1)',
+			'data:text/html,<script>alert(1)</script>',
+			'ftp://example.com/map',
+			'/trips/1',
+			'example.com/map',
+			'not a url',
+			'',
+			null
+		])
+			expect(safeHttpUrl(url)).toBeNull();
+	});
+
+	// `URL` reads each of these as https://example.com/, but the API finds no host and returns 422.
+	it('rejects links without // before the host', () => {
+		for (const url of [
+			'https:example.com',
+			'https:/example.com',
+			'https:///example.com',
+			'http:\\\\example.com',
+			'https:/\\example.com',
+			'https://\t/example.com',
+			'https://\n/example.com'
+		])
+			expect(safeHttpUrl(url)).toBeNull();
 	});
 });

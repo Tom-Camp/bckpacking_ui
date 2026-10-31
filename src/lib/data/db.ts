@@ -51,6 +51,9 @@ export class BckpackDB extends Dexie {
 
 export const db = new BckpackDB();
 
+/** Meta key holding the API's `GearCategoryOption[]`, refreshed on every pull. */
+export const GEAR_CATEGORIES_KEY = 'gearCategories';
+
 export async function getMeta<T>(key: string): Promise<T | undefined> {
 	return (await db.meta.get(key))?.value as T | undefined;
 }

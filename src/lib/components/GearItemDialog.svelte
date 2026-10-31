@@ -10,18 +10,25 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import { live } from '$lib/data/live.svelte';
 	import { createGearItem, updateGearItem } from '$lib/data/mutations';
+	import { gearCategories } from '$lib/data/queries';
+	import { isGearCategory } from '$lib/domain/gear';
 	import { errorMessage } from '$lib/errors';
 
 	let {
 		open = $bindable(false),
 		item,
-		categories
+		name = '',
+		oncreated
 	}: {
 		open: boolean;
 		/** Editing (works offline) vs creating (needs a connection). */
 		item?: GearItem;
-		categories: string[];
+		/** Prefills the name when creating. */
+		name?: string;
+		/** Runs after a new item is saved to the closet and the dialog closes. */
+		oncreated?: (item: GearItem) => void;
 	} = $props();
 
 	const app = getAppContext();
@@ -31,19 +38,9 @@
 		worn: 'Worn (not in pack weight)',
 		consumable: 'Consumable (fuel, sunscreen…)'
 	};
-	const SUGGESTED = [
-		'shelter',
-		'sleep',
-		'kitchen',
-		'water',
-		'clothing',
-		'navigation',
-		'first aid',
-		'repair',
-		'hygiene',
-		'electronics'
-	];
-	const categoryOptions = $derived([...new Set([...categories, ...SUGGESTED])].sort());
+	const categories = live(gearCategories);
+	const categoryOptions = $derived(categories.current ?? []);
+	const selectedCategory = $derived(categoryOptions.find((c) => c.value === form.category));
 
 	let form = $state({
 		name: '',
@@ -58,7 +55,7 @@
 	$effect(() => {
 		if (!open) return;
 		form = {
-			name: item?.name ?? '',
+			name: item?.name ?? name,
 			category: item?.category ?? '',
 			weight_g: item?.weight_g ?? null,
 			kind: item?.kind ?? 'base',
@@ -69,19 +66,35 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		const name = form.name.trim();
+		if (!name) {
+			error = "Name can't be blank.";
+			return;
+		}
+		// Also catches items saved before categories became an enum (e.g. "kitchen").
+		const category = form.category;
+		if (!isGearCategory(category, categoryOptions)) {
+			error = 'Choose a category.';
+			return;
+		}
 		busy = true;
 		error = null;
 		const body = {
-			name: form.name.trim(),
-			category: form.category.trim().toLowerCase(),
+			name,
+			category,
 			weight_g: form.weight_g ?? 0,
 			kind: form.kind,
 			notes: form.notes.trim() || null
 		};
 		try {
-			if (item) await updateGearItem(item.id, body);
-			else await createGearItem(body);
-			open = false;
+			if (item) {
+				await updateGearItem(item.id, body);
+				open = false;
+			} else {
+				const created = await createGearItem(body);
+				open = false;
+				oncreated?.(created);
+			}
 		} catch (e) {
 			error = errorMessage(e);
 		} finally {
@@ -107,10 +120,16 @@
 			<div class="grid grid-cols-2 gap-3">
 				<div class="grid grid-cols-1 gap-2">
 					<Label for="gear-category">Category</Label>
-					<Input id="gear-category" required list="gear-categories" bind:value={form.category} />
-					<datalist id="gear-categories">
-						{#each categoryOptions as c (c)}<option value={c}></option>{/each}
-					</datalist>
+					<Select.Root type="single" bind:value={form.category}>
+						<Select.Trigger id="gear-category" class="w-full">
+							{selectedCategory?.label ?? 'Choose…'}
+						</Select.Trigger>
+						<Select.Content>
+							{#each categoryOptions as c (c.value)}
+								<Select.Item value={c.value} label={c.label} />
+							{/each}
+						</Select.Content>
+					</Select.Root>
 				</div>
 				<div class="grid grid-cols-1 gap-2">
 					<Label for="gear-weight">Weight (each)</Label>
@@ -142,7 +161,9 @@
 				{#if item}
 					<Button type="submit" disabled={busy}>Save</Button>
 				{:else}
-					<OnlineButton type="submit" disabled={busy}>Add to closet</OnlineButton>
+					<OnlineButton type="submit" disabled={busy}>
+						{oncreated ? 'Add to closet & trip' : 'Add to closet'}
+					</OnlineButton>
 				{/if}
 			</Dialog.Footer>
 		</form>

@@ -1,7 +1,11 @@
 <script lang="ts">
+	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 	import { goto } from '$app/navigation';
-	import { login } from '$lib/auth/actions';
+	import { page } from '$app/state';
+	import { isUnverified, login } from '$lib/auth/actions';
 	import FormError from '$lib/components/FormError.svelte';
+	import ResendVerification from '$lib/components/ResendVerification.svelte';
+	import * as Alert from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
@@ -12,16 +16,30 @@
 	let password = $state('');
 	let error = $state<string | null>(null);
 	let busy = $state(false);
+	// The address the API refused as unverified; the resend button sends to it.
+	let unverified = $state<string | null>(null);
+
+	// Set by the verify-email and reset-password pages when they send the user here.
+	const notice =
+		page.url.searchParams.get('verified') === '1'
+			? 'Email verified. Sign in to continue.'
+			: page.url.searchParams.get('reset') === '1'
+				? 'Password updated. Sign in with your new password.'
+				: null;
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		busy = true;
 		error = null;
+		unverified = null;
 		try {
 			await login(email, password);
 			await goto('/');
 		} catch (e) {
-			error = errorMessage(e);
+			if (isUnverified(e)) {
+				error = 'Verify your email before signing in.';
+				unverified = email;
+			} else error = errorMessage(e);
 		} finally {
 			busy = false;
 		}
@@ -39,13 +57,28 @@
 	</Card.Header>
 	<Card.Content>
 		<form class="grid grid-cols-1 gap-4" onsubmit={submit}>
+			{#if notice && !error}
+				<Alert.Root>
+					<CircleCheckIcon />
+					<Alert.Description>{notice}</Alert.Description>
+				</Alert.Root>
+			{/if}
 			<FormError message={error} />
+			{#if unverified}
+				<ResendVerification email={unverified} label="Resend verification email" />
+			{/if}
 			<div class="grid grid-cols-1 gap-2">
 				<Label for="email">Email</Label>
 				<Input id="email" type="email" autocomplete="email" required bind:value={email} />
 			</div>
 			<div class="grid grid-cols-1 gap-2">
-				<Label for="password">Password</Label>
+				<div class="flex items-center justify-between">
+					<Label for="password">Password</Label>
+					<a
+						href="/forgot-password"
+						class="text-sm text-muted-foreground underline underline-offset-4">Forgot password?</a
+					>
+				</div>
 				<Input
 					id="password"
 					type="password"

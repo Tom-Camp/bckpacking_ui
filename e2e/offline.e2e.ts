@@ -1,24 +1,21 @@
 import { expect, test } from '@playwright/test';
+import { registerAndSignIn } from './auth';
 
-// Needs the API running on localhost:8000 (the preview server proxies /api to it).
+// Needs the API running on localhost:8000 (the preview server proxies /api to it), and the
+// API's POSTGRES_* variables to verify the new account (see README).
 
 test('trip data opens offline and offline edits sync on reconnect', async ({ page, context }) => {
 	const stamp = Date.now();
 	const password = 'Ridge-Sunrise-Trailhead-2026!';
 
-	// Register (logs in automatically)
-	await page.goto('/register');
-	await page.getByLabel('Username').fill(`e2e_${stamp}`);
-	await page.getByLabel('Email').fill(`e2e_${stamp}@example.com`);
-	await page.getByLabel('Password').fill(password);
-	await page.getByRole('button', { name: 'Create account' }).click();
-	await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+	await registerAndSignIn(page, `e2e_${stamp}`, password);
 
 	// Gear closet item
 	await page.getByRole('link', { name: 'Gear closet' }).click();
 	await page.getByRole('button', { name: 'New gear' }).click();
 	await page.getByLabel('Name').fill('Tent');
-	await page.getByLabel('Category').fill('shelter');
+	await page.getByLabel('Category').click();
+	await page.getByRole('option', { name: 'Shelter' }).click();
 	await page.getByLabel('Weight (each)').fill('32');
 	await page.getByRole('button', { name: 'Add to closet' }).click();
 	await expect(page.getByText('2 lb')).toBeVisible();
@@ -35,7 +32,7 @@ test('trip data opens offline and offline edits sync on reconnect', async ({ pag
 	const tripId = page.url().split('/').pop()!;
 
 	await page.getByRole('tab', { name: 'Gear' }).click();
-	await page.getByRole('button', { name: 'Add gear' }).click();
+	await page.getByRole('button', { name: 'Add from closet' }).click();
 	await page.getByRole('button', { name: /Tent/ }).click();
 	await page.keyboard.press('Escape');
 	await expect(page.getByTestId('gear-Tent')).toBeVisible();
@@ -63,7 +60,8 @@ test('trip data opens offline and offline edits sync on reconnect', async ({ pag
 	await expect(page.getByTestId('sync-badge')).toContainText('2 pending');
 
 	// Online-only actions are disabled
-	await expect(page.getByRole('button', { name: 'Add gear' })).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'Add from closet' })).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'New gear' })).toBeDisabled();
 
 	// The print view works offline too
 	await page.goto(`/trips/${tripId}/print`);

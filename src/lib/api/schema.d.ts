@@ -38,6 +38,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Forgot Password */
+        post: operations["forgot_password_api_v1_auth_forgot_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset Password */
+        post: operations["reset_password_api_v1_auth_reset_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Email */
+        post: operations["verify_email_api_v1_auth_verify_email_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend Verification */
+        post: operations["resend_verification_api_v1_auth_resend_verification_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me": {
         parameters: {
             query?: never;
@@ -56,34 +124,17 @@ export interface paths {
         patch: operations["update_me_api_v1_users_me_patch"];
         trace?: never;
     };
-    "/api/v1/users": {
+    "/api/v1/users/me/password": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Users */
-        get: operations["list_users_api_v1_users_get"];
+        get?: never;
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/users/{user_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get User */
-        get: operations["get_user_api_v1_users__user_id__get"];
-        put?: never;
-        post?: never;
+        /** Change My Password */
+        post: operations["change_my_password_api_v1_users_me_password_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -211,6 +262,30 @@ export interface paths {
         head?: never;
         /** Update Trip */
         patch: operations["update_trip_api_v1_trips__trip_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/trips/{trip_id}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Share Trip
+         * @description Turn on the public read-only link; returns the existing token if the trip is already shared.
+         */
+        post: operations["share_trip_api_v1_trips__trip_id__share_post"];
+        /**
+         * Unshare Trip
+         * @description Revoke the share link. Sharing again afterwards issues a new token.
+         */
+        delete: operations["unshare_trip_api_v1_trips__trip_id__share_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/trips/{trip_id}/gear": {
@@ -390,6 +465,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gear/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Gear Categories */
+        get: operations["list_gear_categories_api_v1_gear_categories_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gear/{item_id}": {
         parameters: {
             query?: never;
@@ -429,10 +521,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shared/trip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shared Trip */
+        get: operations["get_shared_trip_api_v1_shared_trip_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ChangePasswordRequest */
+        ChangePasswordRequest: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
+        };
         /**
          * ChecklistItemKey
          * @enum {string}
@@ -512,12 +628,31 @@ export interface components {
             /** Target Food G Per Day */
             target_food_g_per_day?: number;
         };
+        /** ForgotPasswordRequest */
+        ForgotPasswordRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
+        /**
+         * GearCategory
+         * @enum {string}
+         */
+        GearCategory: "clothing" | "cooking_water" | "misc" | "navigation_safety" | "shelter" | "sleep";
+        /** GearCategoryOption */
+        GearCategoryOption: {
+            value: components["schemas"]["GearCategory"];
+            /** Label */
+            label: string;
+        };
         /** GearItemCreate */
         GearItemCreate: {
             /** Name */
             name: string;
-            /** Category */
-            category: string;
+            /** @default misc */
+            category: components["schemas"]["GearCategory"];
             /**
              * Weight G
              * @default 0
@@ -537,8 +672,7 @@ export interface components {
             id: string;
             /** Name */
             name: string;
-            /** Category */
-            category: string;
+            category: components["schemas"]["GearCategory"];
             /** Weight G */
             weight_g: number;
             kind: components["schemas"]["GearKind"];
@@ -556,13 +690,14 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Category Label */
+            readonly category_label: string;
         };
         /** GearItemUpdate */
         GearItemUpdate: {
             /** Name */
             name?: string;
-            /** Category */
-            category?: string;
+            category?: components["schemas"]["GearCategory"];
             /** Weight G */
             weight_g?: number;
             kind?: components["schemas"]["GearKind"];
@@ -584,9 +719,128 @@ export interface components {
          * @enum {string}
          */
         Meal: "breakfast" | "lunch" | "dinner" | "snack";
+        /** ResendVerificationRequest */
+        ResendVerificationRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
+        /** ResetPasswordRequest */
+        ResetPasswordRequest: {
+            /** Token */
+            token: string;
+            /** Password */
+            password: string;
+        };
         /** SetRoleRequest */
         SetRoleRequest: {
             role: components["schemas"]["UserRole"];
+        };
+        /**
+         * SharedChecklistItemRead
+         * @description Item and status only: details are free text that may hold personal info.
+         */
+        SharedChecklistItemRead: {
+            item: components["schemas"]["ChecklistItemKey"];
+            status: components["schemas"]["ChecklistStatus"];
+        };
+        /** SharedFoodPlannerRead */
+        SharedFoodPlannerRead: {
+            /** Target Kcal Per Day */
+            target_kcal_per_day: number;
+            /** Target Food G Per Day */
+            target_food_g_per_day: number;
+            /** Food */
+            food: components["schemas"]["SharedTripFoodRead"][];
+        };
+        /**
+         * SharedGearItemRead
+         * @description A closet item as seen through a share link: no private notes or archive state.
+         */
+        SharedGearItemRead: {
+            /** Name */
+            name: string;
+            category: components["schemas"]["GearCategory"];
+            /** Weight G */
+            weight_g: number;
+            kind: components["schemas"]["GearKind"];
+            /** Category Label */
+            readonly category_label: string;
+        };
+        /** SharedTripFoodRead */
+        SharedTripFoodRead: {
+            /** Day */
+            day: number;
+            /** Name */
+            name: string;
+            meal_type: components["schemas"]["Meal"];
+            /** Servings */
+            servings: number;
+            /** Weight G */
+            weight_g: number;
+            /** Kcal */
+            kcal: number;
+        };
+        /** SharedTripGearRead */
+        SharedTripGearRead: {
+            gear_item: components["schemas"]["SharedGearItemRead"];
+            /** Quantity */
+            quantity: number;
+            /** Packed */
+            packed: boolean;
+        };
+        /** SharedTripOwnerRead */
+        SharedTripOwnerRead: {
+            /** Username */
+            username: string;
+        };
+        /**
+         * SharedTripRead
+         * @description Public read-only view of a shared trip; build it with from_trip(), which applies the owner's toggles.
+         *
+         *     Core details are always present. Each optional section is always present as a key: null when the owner
+         *     hasn't shared it, and [] when it's shared but empty. Section fields deliberately have no default, so the
+         *     OpenAPI schema marks them required and the UI's generated type keeps the key non-optional.
+         */
+        SharedTripRead: {
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Area */
+            area: string | null;
+            trip_type: components["schemas"]["TripType"];
+            /** Start Date */
+            start_date: string | null;
+            /** End Date */
+            end_date: string | null;
+            /** Start Trailhead */
+            start_trailhead: string | null;
+            /** End Trailhead */
+            end_trailhead: string | null;
+            /** Total Distance M */
+            total_distance_m: number | null;
+            /** Elevation Gain M */
+            elevation_gain_m: number | null;
+            /** Water Carry L */
+            water_carry_l: number;
+            /** Map Link */
+            map_link: string | null;
+            owner: components["schemas"]["SharedTripOwnerRead"];
+            /** Gear List */
+            gear_list: components["schemas"]["SharedTripGearRead"][] | null;
+            food_plan: components["schemas"]["SharedFoodPlannerRead"] | null;
+            /** Checklist Items */
+            checklist_items: components["schemas"]["SharedChecklistItemRead"][] | null;
+            /** Emergency Contact */
+            emergency_contact: string | null;
+            /**
+             * Checklist Ready
+             * @description Follows the checklist toggle: null when the checklist isn't shared.
+             */
+            readonly checklist_ready: boolean | null;
         };
         /** TokenResponse */
         TokenResponse: {
@@ -791,11 +1045,6 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /**
-             * User Id
-             * Format: uuid
-             */
-            user_id: string;
             /** Name */
             name: string;
             /** Description */
@@ -819,15 +1068,9 @@ export interface components {
             water_carry_l: number;
             /** Map Link */
             map_link: string | null;
-            /** Emergency Contact */
-            emergency_contact: string | null;
             food_plan: components["schemas"]["FoodPlannerRead"] | null;
-            /** Gear List */
-            gear_list: components["schemas"]["TripGearRead"][];
             /** Checklist Items */
             checklist_items: components["schemas"]["ChecklistItemRead"][];
-            /** Notes */
-            notes: components["schemas"]["TripNoteRead"][];
             /**
              * Created At
              * Format: date-time
@@ -839,10 +1082,33 @@ export interface components {
              */
             updated_at: string;
             /**
-             * Checklist Ready
-             * @description True when no checklist item is still to do (done and not-applicable both count).
+             * User Id
+             * Format: uuid
              */
+            user_id: string;
+            /** Emergency Contact */
+            emergency_contact: string | null;
+            /** Gear List */
+            gear_list: components["schemas"]["TripGearRead"][];
+            /** Notes */
+            notes: components["schemas"]["TripNoteRead"][];
+            /** Share Token */
+            share_token: string | null;
+            /** Share Gear */
+            share_gear: boolean;
+            /** Share Food */
+            share_food: boolean;
+            /** Share Checklist */
+            share_checklist: boolean;
+            /** Share Emergency Contact */
+            share_emergency_contact: boolean;
+            /** Checklist Ready */
             readonly checklist_ready: boolean;
+        };
+        /** TripShareRead */
+        TripShareRead: {
+            /** Share Token */
+            share_token: string;
         };
         /**
          * TripType
@@ -876,6 +1142,14 @@ export interface components {
             map_link?: string | null;
             /** Emergency Contact */
             emergency_contact?: string | null;
+            /** Share Gear */
+            share_gear?: boolean;
+            /** Share Food */
+            share_food?: boolean;
+            /** Share Checklist */
+            share_checklist?: boolean;
+            /** Share Emergency Contact */
+            share_emergency_contact?: boolean;
         };
         /**
          * Unit
@@ -908,17 +1182,6 @@ export interface components {
             /** Password */
             password: string;
         };
-        /** UserPublic */
-        UserPublic: {
-            /** Username */
-            username: string;
-            /** First Name */
-            first_name?: string | null;
-            /** Last Name */
-            last_name?: string | null;
-            /** Picture */
-            picture?: string | null;
-        };
         /** UserRead */
         UserRead: {
             /**
@@ -945,6 +1208,8 @@ export interface components {
             first_login?: string | null;
             /** Last Login */
             last_login?: string | null;
+            /** Email Verified At */
+            email_verified_at?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -992,6 +1257,11 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VerifyEmailRequest */
+        VerifyEmailRequest: {
+            /** Token */
+            token: string;
         };
     };
     responses: never;
@@ -1070,6 +1340,138 @@ export interface operations {
             };
         };
     };
+    forgot_password_api_v1_auth_forgot_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_password_api_v1_auth_reset_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_email_api_v1_auth_verify_email_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_verification_api_v1_auth_resend_verification_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResendVerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_me_api_v1_users_me_get: {
         parameters: {
             query?: never;
@@ -1123,14 +1525,18 @@ export interface operations {
             };
         };
     };
-    list_users_api_v1_users_get: {
+    change_my_password_api_v1_users_me_password_post: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -1138,29 +1544,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserPublic"][];
-                };
-            };
-        };
-    };
-    get_user_api_v1_users__user_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                user_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserPublic"];
+                    "application/json": components["schemas"]["TokenResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1498,6 +1882,66 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TripRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    share_trip_api_v1_trips__trip_id__share_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripShareRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unshare_trip_api_v1_trips__trip_id__share_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1980,6 +2424,26 @@ export interface operations {
             };
         };
     };
+    list_gear_categories_api_v1_gear_categories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GearCategoryOption"][];
+                };
+            };
+        };
+    };
     get_gear_item_api_v1_gear__item_id__get: {
         parameters: {
             query?: never;
@@ -2093,6 +2557,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GearItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shared_trip_api_v1_shared_trip_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Share-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedTripRead"];
                 };
             };
             /** @description Validation Error */

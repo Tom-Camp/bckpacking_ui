@@ -7,7 +7,7 @@ class SyncStatus {
 	failed = $state(0);
 	lastSyncedAt = $state<number | null>(null);
 	/** Why the last sync attempt stopped early, if it did. */
-	blocked = $state<'offline' | 'auth' | 'server' | null>(null);
+	blocked = $state<'offline' | 'auth' | 'suspended' | 'server' | null>(null);
 }
 
 export const syncStatus = new SyncStatus();

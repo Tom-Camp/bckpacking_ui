@@ -3,15 +3,21 @@
 	import type { Unit } from '$lib/api/types';
 	import { getAppContext } from '$lib/app-context';
 	import { logout } from '$lib/auth/actions';
+	import {
+		isTooLong,
+		TOO_LONG_MESSAGE,
+		type PasswordStrength as Strength
+	} from '$lib/auth/password-strength';
 	import FormError from '$lib/components/FormError.svelte';
 	import OnlineButton from '$lib/components/OnlineButton.svelte';
+	import PasswordStrength from '$lib/components/PasswordStrength.svelte';
 	import UnitInput from '$lib/components/UnitInput.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as ToggleGroup from '$lib/components/ui/toggle-group';
-	import { updateProfile } from '$lib/data/mutations';
+	import { changePassword, updateProfile } from '$lib/data/mutations';
 	import { errorMessage } from '$lib/errors';
 	import { syncStatus } from '$lib/sync/status.svelte';
 	import { toast } from 'svelte-sonner';
@@ -60,6 +66,43 @@
 			error = errorMessage(e);
 		} finally {
 			busy = false;
+		}
+	}
+
+	// Kept apart from the profile form so saving one never submits or resets the other.
+	let passwords = $state({ current: '', next: '', confirm: '' });
+	let passwordError = $state<string | null>(null);
+	let passwordBusy = $state(false);
+	let strength = $state<Strength | null>(null);
+
+	// Same checks as register; zxcvbn's score is only known once it has loaded.
+	async function submitPassword(event: SubmitEvent) {
+		event.preventDefault();
+		if (passwords.next !== passwords.confirm) {
+			passwordError = 'New passwords don’t match.';
+			return;
+		}
+		if (strength && !strength.ok) {
+			passwordError = strength.message;
+			return;
+		}
+		if (isTooLong(passwords.next)) {
+			passwordError = TOO_LONG_MESSAGE;
+			return;
+		}
+		passwordBusy = true;
+		passwordError = null;
+		try {
+			await changePassword({
+				current_password: passwords.current,
+				new_password: passwords.next
+			});
+			passwords = { current: '', next: '', confirm: '' };
+			toast.success('Password changed');
+		} catch (e) {
+			passwordError = errorMessage(e);
+		} finally {
+			passwordBusy = false;
 		}
 	}
 
@@ -127,6 +170,52 @@
 					</p>
 				</div>
 				<div><OnlineButton type="submit" disabled={busy}>Save</OnlineButton></div>
+			</form>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root>
+		<Card.Header>
+			<Card.Title>Password</Card.Title>
+		</Card.Header>
+		<Card.Content>
+			<form class="grid grid-cols-1 gap-4" onsubmit={submitPassword}>
+				<FormError message={passwordError} />
+				<div class="grid grid-cols-1 gap-2">
+					<Label for="current-password">Current password</Label>
+					<Input
+						id="current-password"
+						type="password"
+						autocomplete="current-password"
+						required
+						bind:value={passwords.current}
+					/>
+				</div>
+				<div class="grid grid-cols-1 gap-2">
+					<Label for="new-password">New password</Label>
+					<Input
+						id="new-password"
+						type="password"
+						autocomplete="new-password"
+						required
+						aria-invalid={strength ? !strength.ok : undefined}
+						bind:value={passwords.next}
+					/>
+					<PasswordStrength password={passwords.next} bind:strength />
+				</div>
+				<div class="grid grid-cols-1 gap-2">
+					<Label for="confirm-password">Confirm new password</Label>
+					<Input
+						id="confirm-password"
+						type="password"
+						autocomplete="new-password"
+						required
+						bind:value={passwords.confirm}
+					/>
+				</div>
+				<div>
+					<OnlineButton type="submit" disabled={passwordBusy}>Change password</OnlineButton>
+				</div>
 			</form>
 		</Card.Content>
 	</Card.Root>

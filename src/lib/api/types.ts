@@ -5,6 +5,11 @@ type Schemas = components['schemas'];
 export type User = Schemas['UserRead'];
 export type UserUpdate = Schemas['UserUpdate'];
 export type UserCreate = Schemas['UserCreate'];
+export type ChangePasswordRequest = Schemas['ChangePasswordRequest'];
+export type VerifyEmailRequest = Schemas['VerifyEmailRequest'];
+export type ResendVerificationRequest = Schemas['ResendVerificationRequest'];
+export type ForgotPasswordRequest = Schemas['ForgotPasswordRequest'];
+export type ResetPasswordRequest = Schemas['ResetPasswordRequest'];
 export type Unit = Schemas['Unit'];
 
 export type Trip = Schemas['TripRead'];
@@ -21,6 +26,8 @@ export type GearItem = Schemas['GearItemRead'];
 export type GearItemCreate = Schemas['GearItemCreate'];
 export type GearItemUpdate = Schemas['GearItemUpdate'];
 export type GearKind = Schemas['GearKind'];
+export type GearCategory = Schemas['GearCategory'];
+export type GearCategoryOption = Schemas['GearCategoryOption'];
 
 export type TripGear = Schemas['TripGearRead'];
 export type TripGearCreate = Schemas['TripGearCreate'];
@@ -34,6 +41,13 @@ export type TripFood = Schemas['TripFoodRead'];
 export type TripFoodCreate = Schemas['TripFoodCreate'];
 export type TripFoodUpdate = Schemas['TripFoodUpdate'];
 export type Meal = Schemas['Meal'];
+
+// What a share link exposes: no ids, timestamps or private fields.
+export type SharedTrip = Schemas['SharedTripRead'];
+export type SharedTripGear = Schemas['SharedTripGearRead'];
+export type SharedChecklistItem = Schemas['SharedChecklistItemRead'];
+export type SharedFoodPlan = Schemas['SharedFoodPlannerRead'];
+export type SharedTripFood = Schemas['SharedTripFoodRead'];
 
 export const TRIP_TYPES: TripType[] = ['loop', 'out-and-back', 'point-to-point'];
 export const GEAR_KINDS: GearKind[] = ['base', 'worn', 'consumable'];

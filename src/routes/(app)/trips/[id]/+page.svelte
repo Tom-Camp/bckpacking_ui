@@ -4,12 +4,14 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import PrinterIcon from '@lucide/svelte/icons/printer';
+	import Share2Icon from '@lucide/svelte/icons/share-2';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import Checklist from '$lib/components/trip/Checklist.svelte';
 	import FoodPlan from '$lib/components/trip/FoodPlan.svelte';
 	import GearList from '$lib/components/trip/GearList.svelte';
 	import Overview from '$lib/components/trip/Overview.svelte';
+	import ShareDialog from '$lib/components/trip/ShareDialog.svelte';
 	import TripForm from '$lib/components/trip/TripForm.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -38,6 +40,7 @@
 	}
 
 	let editOpen = $state(false);
+	let shareOpen = $state(false);
 	const todo = $derived(
 		trip.current?.checklist_items.filter((i) => i.status === 'todo').length ?? 0
 	);
@@ -71,6 +74,9 @@
 			<div class="flex gap-2 pl-10 sm:pl-0">
 				<Button variant="outline" size="sm" href="/trips/{t.id}/print">
 					<PrinterIcon /> Print
+				</Button>
+				<Button variant="outline" size="sm" onclick={() => (shareOpen = true)}>
+					<Share2Icon /> Share
 				</Button>
 				<Button variant="outline" size="sm" onclick={() => (editOpen = true)}>
 					<PencilIcon /> Edit
@@ -107,6 +113,8 @@
 			<Tabs.Content value="food" class="pt-4"><FoodPlan trip={t} /></Tabs.Content>
 		</Tabs.Root>
 	</div>
+
+	<ShareDialog bind:open={shareOpen} trip={t} />
 
 	<Dialog.Root bind:open={editOpen}>
 		<Dialog.Content class="max-h-[90svh] overflow-y-auto sm:max-w-2xl">

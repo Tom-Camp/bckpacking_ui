@@ -1,0 +1,84 @@
+# Commit messages follow Conventional Commits (@commitlint/config-conventional):
+#   npm runtime deps -> chore(deps): bump ...
+#   npm dev deps     -> chore(deps-dev): bump ...
+#   GitHub Actions   -> ci(deps): bump ...
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    # Wait for new releases to settle before proposing them (security updates
+    # ignore cooldowns and still open immediately).
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    # A dependency joins the first group it matches, so the lockstep groups
+    # (all update types, majors included) must come before npm-minor-patch.
+    # Each one holds packages whose peer ranges pin each other's major, which
+    # fail `npm ci` with ERESOLVE when Dependabot bumps them one at a time.
+    groups:
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+          - 'vitest-browser-svelte'
+      vite:
+        patterns:
+          - 'vite'
+          - '@sveltejs/vite-plugin-svelte'
+          - '@sveltejs/kit'
+          - '@sveltejs/adapter-static'
+      eslint:
+        patterns:
+          - 'eslint'
+          - '@eslint/js'
+      tailwind:
+        patterns:
+          - 'tailwindcss'
+          - '@tailwindcss/*'
+      commitlint:
+        patterns:
+          - '@commitlint/*'
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # @types/node must match the Node runtime's major. Bump it by hand along
+      # with NODE_VERSION in .github/workflows/ (and `engines`, if one is added).
+      - dependency-name: '@types/node'
+        update-types:
+          - version-update:semver-major
+      # Hold kit 3 and adapter-static 4 until @vite-pwa/sveltekit supports
+      # kit 3 (1.1.0 peers on kit ^1.3.1 || ^2.0.1). Remove both once it does.
+      - dependency-name: '@sveltejs/kit'
+        update-types:
+          - version-update:semver-major
+      - dependency-name: '@sveltejs/adapter-static'
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns:
+          - '*'

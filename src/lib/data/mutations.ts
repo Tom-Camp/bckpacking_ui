@@ -7,6 +7,7 @@
 
 import { api, call, OfflineError } from '$lib/api/client';
 import type {
+	ChangePasswordRequest,
 	ChecklistItemKey,
 	ChecklistItemUpdate,
 	FoodPlanUpdate,
@@ -26,6 +27,7 @@ import { CHECKLIST_LABELS, checklistReady, shuttleStatusFor } from '$lib/domain/
 import { sync } from '$lib/sync/engine';
 import { bumpLocalVersion, enqueuePatch } from '$lib/sync/outbox';
 import { db } from './db';
+import { gearCategories } from './queries';
 
 const TRIPS = '/api/v1/trips';
 const GEAR = '/api/v1/gear';
@@ -154,16 +156,13 @@ export function updateTrip(tripId: string, body: TripUpdate) {
 
 export async function updateGearItem(itemId: string, body: GearItemUpdate) {
 	const current = await db.gearItems.get(itemId);
-	const normalized =
-		body.category !== undefined ? { ...body, category: body.category.trim().toLowerCase() } : body;
-	return queueEdit(
-		`${GEAR}/${itemId}`,
-		normalized,
-		`Gear: ${current?.name ?? 'item'}`,
-		async () => {
-			if (current) await applyGearItem({ ...current, ...normalized });
-		}
-	);
+	// Keep the cached label in step with the category until the next pull brings the server's.
+	const categories = body.category ? await gearCategories() : [];
+	const label = categories.find((c) => c.value === body.category)?.label;
+	return queueEdit(`${GEAR}/${itemId}`, body, `Gear: ${current?.name ?? 'item'}`, async () => {
+		if (current)
+			await applyGearItem({ ...current, ...body, ...(label && { category_label: label }) });
+	});
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -183,6 +182,23 @@ export async function deleteTrip(tripId: string) {
 		await db.trips.delete(tripId);
 		await dropQueued(`${TRIPS}/${tripId}`);
 	});
+}
+
+/** The API mints the token, so turning sharing on needs a connection. */
+export async function shareTrip(tripId: string): Promise<string> {
+	const { share_token } = await online(() =>
+		api.POST('/api/v1/trips/{trip_id}/share', { params: { path: { trip_id: tripId } } })
+	);
+	await editTrip(tripId, (trip) => (trip.share_token = share_token));
+	return share_token;
+}
+
+/** The API keeps the section toggles when a link is revoked, so the cache does too. */
+export async function unshareTrip(tripId: string) {
+	await online(() =>
+		api.DELETE('/api/v1/trips/{trip_id}/share', { params: { path: { trip_id: tripId } } })
+	);
+	await editTrip(tripId, (trip) => (trip.share_token = null));
 }
 
 export async function addNote(tripId: string, content: string) {
@@ -282,4 +298,9 @@ export async function updateProfile(body: UserUpdate) {
 	const user = await online(() => api.PATCH('/api/v1/users/me', { body }));
 	await db.users.put(user);
 	return user;
+}
+
+/** Nothing about the password is cached, so there's nothing to write locally. */
+export async function changePassword(body: ChangePasswordRequest) {
+	await online(() => api.POST('/api/v1/users/me/password', { body }));
 }

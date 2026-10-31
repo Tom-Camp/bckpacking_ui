@@ -9,6 +9,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { TRIP_TYPE_LABELS } from '$lib/domain/checklist';
+	import { safeHttpUrl } from '$lib/domain/trip';
 	import { errorMessage } from '$lib/errors';
 
 	let {
@@ -49,15 +50,26 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		const name = form.name.trim();
+		if (!name) {
+			error = "Name can't be blank.";
+			return;
+		}
 		if (form.start_date && form.end_date && form.end_date < form.start_date) {
 			error = 'End date must be on or after the start date.';
+			return;
+		}
+		// The API returns 422 for anything else, which would send a queued edit to "Couldn't sync".
+		const mapLink = blank(form.map_link);
+		if (mapLink && !safeHttpUrl(mapLink)) {
+			error = 'Map link must start with http:// or https://';
 			return;
 		}
 		busy = true;
 		error = null;
 		try {
 			await onsubmit({
-				name: form.name.trim(),
+				name,
 				description: blank(form.description),
 				area: blank(form.area),
 				trip_type: form.trip_type,
@@ -68,7 +80,7 @@
 				total_distance_m: form.total_distance_m,
 				elevation_gain_m: form.elevation_gain_m,
 				water_carry_l: form.water_carry_l ?? 0,
-				map_link: blank(form.map_link),
+				map_link: mapLink,
 				emergency_contact: blank(form.emergency_contact)
 			});
 		} catch (e) {
