@@ -48,6 +48,10 @@ updates:
       commitlint:
         patterns:
           - '@commitlint/*'
+      vite-pwa:
+        patterns:
+          - 'vite-plugin-pwa'
+          - '@vite-pwa/*'
       npm-minor-patch:
         update-types:
           - minor
