@@ -118,6 +118,17 @@ export function user(overrides: Partial<User> = {}): User {
 	};
 }
 
+/** A signed-in admin: what `GET /users/me` returns for an account with `role: 'admin'`. */
+export function adminUser(overrides: Partial<User> = {}): User {
+	return user({
+		id: 'admin-1',
+		email: 'admin@example.com',
+		username: 'admin',
+		role: 'admin',
+		...overrides
+	});
+}
+
 export function note(overrides: Partial<TripNote> = {}): TripNote {
 	return {
 		id: crypto.randomUUID(),

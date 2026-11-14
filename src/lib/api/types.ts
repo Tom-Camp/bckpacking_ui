@@ -11,6 +11,8 @@ export type ResendVerificationRequest = Schemas['ResendVerificationRequest'];
 export type ForgotPasswordRequest = Schemas['ForgotPasswordRequest'];
 export type ResetPasswordRequest = Schemas['ResetPasswordRequest'];
 export type Unit = Schemas['Unit'];
+export type UserRole = Schemas['UserRole'];
+export type UserStatus = Schemas['UserStatus'];
 
 export type Trip = Schemas['TripRead'];
 export type TripCreate = Schemas['TripCreate'];

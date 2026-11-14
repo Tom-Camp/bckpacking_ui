@@ -4,6 +4,7 @@
 	import BackpackIcon from '@lucide/svelte/icons/backpack';
 	import MountainIcon from '@lucide/svelte/icons/mountain';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import ShieldUserIcon from '@lucide/svelte/icons/shield-user';
 	import TentIcon from '@lucide/svelte/icons/tent';
 	import WifiOffIcon from '@lucide/svelte/icons/wifi-off';
 	import { setAppContext } from '$lib/app-context';
@@ -37,11 +38,15 @@
 		}
 	});
 
-	const nav = [
+	// The Admin item is cosmetic: the API enforces the role on every admin route.
+	const nav = $derived([
 		{ href: '/', label: 'Trips', icon: TentIcon },
 		{ href: '/gear', label: 'Gear closet', icon: BackpackIcon },
+		...(me.current?.role === 'admin'
+			? [{ href: '/admin', label: 'Admin', icon: ShieldUserIcon }]
+			: []),
 		{ href: '/settings', label: 'Settings', icon: SettingsIcon }
-	];
+	]);
 
 	const isActive = (href: string) =>
 		href === '/'
