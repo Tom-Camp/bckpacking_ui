@@ -7,7 +7,7 @@ import { session } from '$lib/auth/session.svelte';
 import { db } from '$lib/data/db';
 import { startSync } from '$lib/sync/engine';
 import { syncStatus } from '$lib/sync/status.svelte';
-import { user } from '$lib/test/fixtures';
+import { adminUser, user } from '$lib/test/fixtures';
 import InLayout from '$lib/test/InLayout.svelte';
 import { setOnline } from '$lib/test/online';
 import { setRoute } from '$lib/test/route';
@@ -52,6 +52,21 @@ describe('app layout', () => {
 		setOnline(true);
 		syncStatus.blocked = 'auth';
 		await expect.element(screen.getByText(/Session expired/)).toBeVisible();
+	});
+
+	it('shows the Admin nav item to admins only', async () => {
+		await browser.viewport(1024, 768);
+		session.set('jwt-token');
+		await db.users.put(user());
+		const screen = await render(Layout, { children });
+		await expect.element(screen.getByRole('link', { name: 'Gear closet' })).toBeVisible();
+		await expect.element(screen.getByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
+
+		await db.users.clear();
+		await db.users.put(adminUser());
+		await expect
+			.element(screen.getByRole('link', { name: 'Admin' }))
+			.toHaveAttribute('href', '/admin');
 	});
 
 	it('provides the cached profile’s units to pages', async () => {
