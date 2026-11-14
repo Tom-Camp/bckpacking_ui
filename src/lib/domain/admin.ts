@@ -20,6 +20,12 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 	unauthenticated: 'Unauthenticated'
 };
 
+/**
+ * Roles an admin can give. `unauthenticated` is a `UserRole` value nothing assigns, so the UI
+ * doesn't offer it.
+ */
+export const ASSIGNABLE_ROLES: UserRole[] = ['user', 'admin'];
+
 export const STATUS_LABELS: Record<UserStatus, string> = {
 	active: 'Active',
 	blocked: 'Blocked'

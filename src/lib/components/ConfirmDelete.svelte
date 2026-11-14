@@ -13,6 +13,7 @@
 		variant = 'ghost',
 		size = 'icon-sm',
 		label,
+		open = $bindable(false),
 		children
 	}: {
 		title: string;
@@ -23,15 +24,18 @@
 		size?: ButtonSize;
 		/** Accessible name for icon-only triggers. */
 		label?: string;
-		children: Snippet;
+		/** Bind to open the dialog from elsewhere, e.g. a menu item. */
+		open?: boolean;
+		/** The trigger button's content. Without it there is no trigger; open it with `open`. */
+		children?: Snippet;
 	} = $props();
-
-	let open = $state(false);
 </script>
 
-<OnlineButton {variant} {size} aria-label={label} onclick={() => (open = true)}>
-	{@render children()}
-</OnlineButton>
+{#if children}
+	<OnlineButton {variant} {size} aria-label={label} onclick={() => (open = true)}>
+		{@render children()}
+	</OnlineButton>
+{/if}
 
 <AlertDialog.Root bind:open>
 	<AlertDialog.Content>

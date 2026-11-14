@@ -19,6 +19,7 @@
 	} from '$lib/domain/admin';
 	import { errorMessage } from '$lib/errors';
 	import { syncStatus } from '$lib/sync/status.svelte';
+	import UserActions from './UserActions.svelte';
 
 	// Admin data is online-only: it lives in component state, never in IndexedDB. Other users'
 	// records don't belong in the offline cache, and `pull()` would replace them anyway.
@@ -38,6 +39,27 @@
 	let loading = $state(false);
 	// The cached role is stale (e.g. the user was demoted). Stop asking.
 	let lostAccess = $state(false);
+	// The outcome of the last row action that didn't go to plan.
+	let actionError = $state<string | null>(null);
+	let actionNotice = $state<string | null>(null);
+
+	function replaceUser(updated: User) {
+		actionError = actionNotice = null;
+		users = users?.map((u) => (u.id === updated.id ? updated : u)) ?? null;
+	}
+
+	function removeUser(id: string) {
+		users = users?.filter((u) => u.id !== id) ?? null;
+	}
+
+	function actionFailed(target: User, e: unknown) {
+		actionError = actionNotice = null;
+		if (e instanceof ApiError && e.status === 404) {
+			removeUser(target.id);
+			actionNotice = `${target.username} no longer exists.`;
+		} else if (e instanceof ApiError && e.status === 403) lostAccess = true;
+		else actionError = errorMessage(e);
+	}
 
 	// Refetches when the filter changes or the connection comes back.
 	$effect(() => {
@@ -45,7 +67,7 @@
 		const query = userListQuery(filter);
 		let current = true;
 		loading = true;
-		error = null;
+		error = actionError = actionNotice = null;
 		call(() => api.GET('/api/v1/admin/users', { params: { query } }))
 			.then((data) => {
 				if (current) users = data;
@@ -100,7 +122,12 @@
 				</Alert.Description>
 			</Alert.Root>
 		{:else}
-			<FormError message={error} />
+			<FormError message={error ?? actionError} />
+			{#if actionNotice}
+				<Alert.Root>
+					<Alert.Description>{actionNotice}</Alert.Description>
+				</Alert.Root>
+			{/if}
 			{#if users === null}
 				{#if loading}
 					<p class="text-sm text-muted-foreground">Loading users…</p>
@@ -119,6 +146,7 @@
 								<th class="px-3 py-2 font-medium">Email verified</th>
 								<th class="px-3 py-2 font-medium">Last login</th>
 								<th class="px-3 py-2 font-medium">Joined</th>
+								<th class="px-3 py-2"><span class="sr-only">Actions</span></th>
 							</tr>
 						</thead>
 						<tbody>
@@ -143,6 +171,18 @@
 										{formatTimestamp(u.last_login, { time: true }) ?? 'Never'}
 									</td>
 									<td class="px-3 py-2 whitespace-nowrap">{formatTimestamp(u.created_at)}</td>
+									<td class="px-3 py-1 text-right">
+										<UserActions
+											user={u}
+											self={u.id === app.user?.id}
+											onupdate={replaceUser}
+											ondelete={() => {
+												actionError = actionNotice = null;
+												removeUser(u.id);
+											}}
+											onerror={(e) => actionFailed(u, e)}
+										/>
+									</td>
 								</tr>
 							{/each}
 						</tbody>
