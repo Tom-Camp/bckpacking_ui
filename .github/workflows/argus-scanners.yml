@@ -38,14 +38,14 @@ jobs:
       # Argus maps OpenGrep ERROR to high, so this fails only on error-level rules;
       # warnings and notes show as code scanning alerts.
       - name: Run OpenGrep
-        uses: huntridge-labs/argus/.github/actions/scanner-opengrep@55e236b16587bab005247726b366f874f66aa0da # 1.14.1
+        uses: huntridge-labs/argus/.github/actions/scanner-opengrep@9d4652ce8cd6f3041e77e4702cc9e084a3b6682c # 1.15.0
         with:
           enable_code_security: 'true'
           fail_on_severity: 'high'
 
       - name: Run Gitleaks (Secrets Detection)
         if: ${{ !cancelled() }} # still scan when OpenGrep fails
-        uses: huntridge-labs/argus/.github/actions/scanner-gitleaks@55e236b16587bab005247726b366f874f66aa0da # 1.14.1
+        uses: huntridge-labs/argus/.github/actions/scanner-gitleaks@9d4652ce8cd6f3041e77e4702cc9e084a3b6682c # 1.15.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -67,7 +67,7 @@ jobs:
           persist-credentials: false
 
       - name: Generate SBOM
-        uses: huntridge-labs/argus/.github/actions/scanner-syft@55e236b16587bab005247726b366f874f66aa0da # 1.14.1
+        uses: huntridge-labs/argus/.github/actions/scanner-syft@9d4652ce8cd6f3041e77e4702cc9e084a3b6682c # 1.15.0
         with:
           scan_path: '.'
           output_format: 'cyclonedx-json'
@@ -100,7 +100,7 @@ jobs:
         continue-on-error: true
 
       - name: Generate combined summary
-        uses: huntridge-labs/argus/.github/actions/security-summary@55e236b16587bab005247726b366f874f66aa0da # 1.14.1
+        uses: huntridge-labs/argus/.github/actions/security-summary@9d4652ce8cd6f3041e77e4702cc9e084a3b6682c # 1.15.0
         with:
           post_pr_comment: 'true'
         continue-on-error: true
